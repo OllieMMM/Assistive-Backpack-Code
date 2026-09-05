@@ -39,4 +39,4 @@ reminders with automatic item verification to reduce the
 cognitive load associated with preparing for daily activities
 while maintaining a simple and intuitive interface.<p>
 
-![alt text](Project Architecture.png)
+![alt text](/Project%20Architecture.png)
