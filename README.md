@@ -3,6 +3,9 @@
 This git repository documents the work and code base created by Oliver McKinlay 
 with credity to Callum Storra and Emmerson Gammaldi for our Electronic Systems 
 Implamentation subject during our time at Melbourne University semester 2 2026.
+For the complete project documentation check in the docs folder of this repository.
+https://github.com/OllieMMM/Assistive-Backpack-Code/tree/main/docs
+
 
 ### Project Overview
 <p>
@@ -15,6 +18,7 @@ provide simple and intuitive reminders while helping users
 organise tasks for their day. By combining RFID identification, visual feedback, buttons, and audible alerts, the
 system aims to support users in completing daily routines
 independently while providing peace of mind for carers. <p>
+
 
 ### Proposed Solution 
 <p>The proposed solution is an intelligent backpack which
@@ -34,3 +38,5 @@ The system will therefore combine task
 reminders with automatic item verification to reduce the
 cognitive load associated with preparing for daily activities
 while maintaining a simple and intuitive interface.<p>
+
+![alt text](Project Architecture.png)
