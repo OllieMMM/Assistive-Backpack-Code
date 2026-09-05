@@ -1,8 +1,0 @@
-[
-{
-  "directory": "C:/Users/olive/OneDrive/Documents/University/2026/Semester 2/ESI/Assistive Backpack Code/out/build/GCC 14.2.0 x86_64-w64-mingw32 (ucrt64)",
-  "command": "C:\\msys64\\ucrt64\\bin\\g++.exe   -g -o CMakeFiles\\AssistiveBackpackCode.dir\\main.cpp.obj -c \"C:\\Users\\olive\\OneDrive\\Documents\\University\\2026\\Semester 2\\ESI\\Assistive Backpack Code\\main.cpp\"",
-  "file": "C:/Users/olive/OneDrive/Documents/University/2026/Semester 2/ESI/Assistive Backpack Code/main.cpp",
-  "output": "CMakeFiles/AssistiveBackpackCode.dir/main.cpp.obj"
-}
-]
