@@ -1,1 +1,1 @@
-**Assistive Backpack for Independent Living Coding project
+* Assistive Backpack for Independent Living Coding project
