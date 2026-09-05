@@ -1,0 +1,1451 @@
+BACKPACK ASSISTANT — V1 SOFTWARE CORE Project Architecture, Goals &
+Implementation Specification Prepared from the team/AI design discussion
+
+============================================================ 1. PURPOSE
+OF THIS DOCUMENT
+============================================================
+
+This document captures the agreed V1 software architecture for the
+assistive backpack project.
+
+The immediate software task is to build the backpack’s core logic
+independently of the physical hardware. The software must manage:
+
+-   Physical item identification and inventory
+-   RFID-tag-to-item mapping
+-   Task definitions and task selection
+-   Checking whether required items are already in the backpack
+-   Guiding the user through missing-item acquisition
+-   Task state and completion
+-   Task stopping
+-   Events/outputs that can later be connected to RFID, buttons, LCD,
+    LEDs, buzzer, audio, clock and power hardware
+
+The key engineering principle is:
+
+    BUILD THE BACKPACK BRAIN FIRST.
+    KEEP THE BRAIN INDEPENDENT OF HARDWARE.
+
+The V1 program should therefore be testable entirely through simulated
+function calls and/or a Serial debug console. Real RFID and feedback
+hardware can be integrated later without redesigning the core logic.
+
+============================================================ 2. V1 GOALS
+============================================================
+
+PRIMARY GOALS
+
+1.  Create a reliable inventory management system.
+2.  Associate RFID tag IDs with logical item types.
+3.  Track whether known physical items are inside or outside the
+    backpack.
+4.  Define a small set of predetermined tasks.
+5.  Allow only one active task at a time.
+6.  When a task starts, check the current inventory.
+7.  Determine which required item should be acquired next.
+8.  Process a simulated RFID scan through a single public function.
+9.  Correctly handle: - required item scanned - item already in
+    backpack - known but unnecessary item - unknown RFID tag - task
+    completion - task stopping
+10. Produce events rather than directly controlling hardware.
+11. Make the complete system testable without an RFID module, LCD,
+    buttons, audio player or backpack.
+12. Provide a clean API for the other team members to integrate their
+    hardware.
+
+SECONDARY GOALS
+
+-   Keep the architecture expandable for a future OLED/UI.
+-   Avoid unnecessary dynamic memory allocation because the eventual
+    target may be an Arduino Uno-class platform.
+-   Use fixed-size arrays and enums where practical.
+-   Use non-blocking logic where timing is eventually required.
+-   Leave room for EEPROM storage of tag mappings/configuration.
+-   Make the V1 code understandable enough that all three team members
+    can work with it.
+
+============================================================ 3.
+HIGH-LEVEL SYSTEM ARCHITECTURE
+============================================================
+
+The system is divided into a hardware-independent CORE and separate
+hardware subsystems.
+
+                    +----------------------------+
+                    |      HARDWARE LAYER        |
+                    |                            |
+                    | RFID / Buttons / Clock     |
+                    | LCD / LEDs / Buzzer        |
+                    | DFPlayer / Audio / Power   |
+                    +-------------+--------------+
+                                  |
+                         INPUT EVENTS
+                                  |
+                                  v
+                    +----------------------------+
+                    |       BACKPACK CORE         |
+                    |                            |
+                    |  State Machine             |
+                    |  Inventory Manager          |
+                    |  Task Manager               |
+                    |  Item Database              |
+                    |  Event Generator            |
+                    +-------------+--------------+
+                                  |
+                         OUTPUT EVENTS
+                                  |
+                                  v
+                    +----------------------------+
+                    |      FEEDBACK / UI          |
+                    |                            |
+                    | LCD / OLED / LEDs / Audio  |
+                    | Buzzer / User prompts      |
+                    +----------------------------+
+
+CORE PRINCIPLE
+
+The Backpack Core must not contain code such as:
+
+    lcd.print(...)
+    digitalWrite(...)
+    player.play(...)
+    RFID.read(...)
+
+Instead, the core should produce logical events such as:
+
+    EVENT_ITEM_ACQUIRED
+    EVENT_UNKNOWN_RFID
+    EVENT_TASK_COMPLETE
+
+The hardware/UI layer decides what those events mean physically.
+
+============================================================ 4.
+SUBSYSTEM ROLES
+============================================================
+
+4.1 BACKPACK CORE / CONTROLLER
+
+This is the central coordinator.
+
+Responsibilities:
+
+-   Receive logical inputs from other subsystems.
+-   Maintain the current system state.
+-   Start and stop tasks.
+-   Process scanned items.
+-   Coordinate inventory and task management.
+-   Generate output events.
+-   Provide status information.
+
+Important public calls should include:
+
+    begin()
+    startTask(taskType)
+    stopTask()
+    itemScanned(tagID)
+    itemAdded(tagID)
+    itemRemoved(tagID)
+
+Useful status calls:
+
+    getState()
+    getCurrentTask()
+    getCurrentRequiredItem()
+    isTaskActive()
+
+4.2 INVENTORY MANAGER
+
+Responsibilities:
+
+-   Store the known physical RFID tags.
+-   Associate each tag with an ItemType.
+-   Track whether each physical item is in the backpack.
+-   Add/remove items.
+-   Determine whether a logical item type is currently available.
+
+Conceptual functions:
+
+    registerItem(tagID, itemType)
+    addItem(tagID)
+    removeItem(tagID)
+    hasItem(itemType)
+    findItem(tagID)
+    getItemType(tagID)
+    clearInventory()
+
+Important distinction:
+
+    RFID TAG = physical object identifier
+    ITEM TYPE = logical description such as Wallet or Keys
+
+Example:
+
+    0x1234 -> Wallet -> BACKPACK
+    0x5678 -> Keys   -> OUTSIDE
+
+A task should ask:
+
+    hasItem(ITEM_WALLET)
+
+rather than knowing the wallet’s RFID tag directly.
+
+4.3 TASK MANAGER
+
+Responsibilities:
+
+-   Store task definitions.
+-   Store each task’s required item types.
+-   Define the order in which items should be acquired.
+-   Track the active task.
+-   Determine which required items are already present.
+-   Determine the next missing item.
+-   Determine when all required items have been acquired.
+
+Conceptual functions:
+
+    startTask(taskType)
+    stopTask()
+    getCurrentTask()
+    getNextRequiredItem()
+    isTaskComplete()
+
+Only one task may be active at any time.
+
+4.4 RFID SUBSYSTEM
+
+The RFID subsystem is NOT responsible for inventory logic.
+
+Its responsibility is simply:
+
+    detect RFID tag
+    |
+    v
+    report tag ID to Backpack Core
+
+For example:
+
+    backpack.itemScanned(0x1234);
+
+Later, the RFID subsystem may determine whether a tag is entering or
+leaving the backpack and call:
+
+    backpack.itemAdded(0x1234);
+
+or:
+
+    backpack.itemRemoved(0x1234);
+
+The core should not care whether direction was determined using:
+
+-   One RC522 plus user input
+-   Two RC522 readers
+-   RC522 plus IR beam sensors
+-   Another future method
+
+4.5 INPUT / BUTTON SUBSYSTEM
+
+Responsibilities:
+
+-   Detect physical button presses.
+-   Convert them into logical commands.
+
+Examples:
+
+    backpack.startTask(TASK_UNIVERSITY);
+    backpack.stopTask();
+
+The button subsystem should not directly modify inventory or task state.
+
+4.6 FEEDBACK / UI SUBSYSTEM
+
+Responsibilities:
+
+-   Listen for core events.
+-   Present them to the user through LCD/OLED, LEDs, buzzer, audio etc.
+
+For example:
+
+    EVENT_ITEM_ACQUIRED
+        -> display "Phone acquired"
+        -> green LED
+        -> optional audio
+
+    EVENT_UNKNOWN_RFID
+        -> display error
+        -> warning sound
+
+The core should generate the event, not perform the physical feedback.
+
+4.7 AUDIO / DFPLAYER SUBSYSTEM
+
+Responsibilities:
+
+-   Receive logical audio requests.
+-   Map them to stored audio files.
+
+Example:
+
+    EVENT_TASK_REMINDER
+        -> play audio file associated with current task
+
+The Task Manager should know which task has an audio/reminder ID if
+required, but should not directly control the DFPlayer.
+
+4.8 CLOCK / FUTURE TIMING SUBSYSTEM
+
+The clock is not required for V1 core development.
+
+Later it may be used for:
+
+-   Scheduled tasks
+-   Time-based reminders
+-   Automatic task selection
+-   Time/date display
+
+It should ultimately report time information to the core rather than
+embedding clock hardware code inside the core.
+
+============================================================ 5. CORE
+DATA MODEL ============================================================
+
+5.1 ITEM TYPES
+
+Use an enum for the predefined logical item types.
+
+Example:
+
+    enum ItemType {
+        ITEM_WALLET,
+        ITEM_KEYS,
+        ITEM_PHONE,
+        ITEM_LAPTOP,
+        ITEM_CHARGER,
+        ITEM_WATER_BOTTLE
+    };
+
+The exact list can be changed as the project develops.
+
+5.2 LOCATION
+
+Each physical item should have a location.
+
+Recommended V1:
+
+    enum Location {
+        UNKNOWN,
+        OUTSIDE,
+        BACKPACK
+    };
+
+UNKNOWN is useful because the software may not always know where an item
+is after startup or unexpected physical changes.
+
+5.3 PHYSICAL ITEM RECORD
+
+Conceptually:
+
+    struct Item {
+        uint32_t tagID;
+        ItemType type;
+        Location location;
+    };
+
+Example:
+
+    tagID = 0x1234
+    type = ITEM_WALLET
+    location = BACKPACK
+
+5.4 TASK RECORD
+
+Conceptually:
+
+    struct Task {
+        TaskType type;
+        ItemType requiredItems[MAX_TASK_ITEMS];
+        uint8_t itemCount;
+        uint8_t reminderAudio;
+    };
+
+A task references logical ItemTypes rather than RFID IDs.
+
+============================================================ 6. TASK
+STATE MACHINE
+============================================================
+
+The task state machine is the heart of the core.
+
+Recommended V1 states:
+
+    IDLE
+    CHECKING_INVENTORY
+    ACQUIRING_ITEMS
+    TASK_REMINDER
+
+OPTIONAL FUTURE STATE:
+
+    TASK_COMPLETE
+
+However, TASK_COMPLETE may not be necessary if completion immediately
+transitions to TASK_REMINDER.
+
+6.1 IDLE
+
+No task is currently active.
+
+Possible inputs:
+
+    startTask(...)
+
+Transition:
+
+    IDLE
+      |
+      v
+    CHECKING_INVENTORY
+
+6.2 CHECKING_INVENTORY
+
+When a task begins:
+
+1.  Load the selected task.
+2.  Check each required ItemType against inventory.
+3.  Skip items already in the backpack.
+4.  Find the first missing required item.
+5.  If something is missing, enter ACQUIRING_ITEMS.
+6.  If everything is present, enter TASK_REMINDER.
+
+6.3 ACQUIRING_ITEMS
+
+The user is instructed to collect the missing items.
+
+The system should tell the user which item is currently required.
+
+When:
+
+    itemScanned(tagID)
+
+is called:
+
+1.  Look up the RFID tag.
+2.  Determine its ItemType.
+3.  Check whether it is relevant to the current task.
+4.  If relevant, update inventory.
+5.  Recalculate the next required item.
+6.  Continue until all required items are present.
+
+6.4 TASK_REMINDER
+
+All required items have been acquired.
+
+The system now enters the task/reminder phase.
+
+The core should generate a logical reminder event periodically if
+required.
+
+The task continues until:
+
+    stopTask()
+
+or a new task is started.
+
+============================================================ 7.
+IMPORTANT INPUT FUNCTIONS
+============================================================
+
+The following functions form the primary integration API.
+
+7.1 startTask()
+
+Example:
+
+    backpack.startTask(TASK_UNIVERSITY);
+
+Expected behaviour:
+
+-   Reject or replace an existing task according to the agreed policy.
+-   Set the selected task as active.
+-   Generate EVENT_TASK_STARTED.
+-   Check inventory.
+-   Determine the first missing item.
+-   Generate EVENT_ITEM_REQUIRED if an item is missing.
+-   If no items are missing, enter TASK_REMINDER.
+
+7.2 stopTask()
+
+Example:
+
+    backpack.stopTask();
+
+Expected behaviour:
+
+-   Stop the active task.
+-   Reset task-specific progress/state.
+-   Generate EVENT_TASK_STOPPED.
+-   Return to IDLE.
+
+7.3 itemScanned(tagID)
+
+Example:
+
+    backpack.itemScanned(0x1234);
+
+Meaning:
+
+    "The RFID subsystem has detected this tag."
+
+The function should:
+
+1.  Look up the tag.
+2.  If unknown: generate EVENT_UNKNOWN_RFID initiate/flag the
+    add-new-item flow
+3.  If known: determine ItemType process according to current
+    state/context
+
+The scan itself should not automatically be interpreted as an IN or OUT
+movement unless the surrounding subsystem/context establishes that.
+
+7.4 itemAdded(tagID)
+
+Example:
+
+    backpack.itemAdded(0x1234);
+
+Meaning:
+
+    "This known physical item has entered the backpack."
+
+Expected behaviour:
+
+-   Validate the tag.
+-   Set location to BACKPACK.
+-   Update inventory.
+-   If an active task needs this item, advance the task.
+-   Generate appropriate event(s).
+
+7.5 itemRemoved(tagID)
+
+Example:
+
+    backpack.itemRemoved(0x1234);
+
+Meaning:
+
+    "This known physical item has left the backpack."
+
+Expected behaviour:
+
+-   Validate the tag.
+-   Set location to OUTSIDE.
+-   Update inventory.
+-   If necessary, notify the active task that a required item is no
+    longer present.
+
+============================================================ 8. EVENT
+SYSTEM ============================================================
+
+The event system provides the clean connection between the core and
+hardware.
+
+Recommended event types:
+
+    EVENT_TASK_STARTED
+    EVENT_TASK_STOPPED
+    EVENT_TASK_COMPLETE
+    EVENT_ITEM_REQUIRED
+    EVENT_ITEM_ACQUIRED
+    EVENT_ITEM_ALREADY_PRESENT
+    EVENT_ITEM_NOT_REQUIRED
+    EVENT_UNKNOWN_RFID
+    EVENT_ITEM_ADDED
+    EVENT_ITEM_REMOVED
+    EVENT_TASK_REMINDER
+
+Conceptual event structure:
+
+    struct BackpackEvent {
+        EventType type;
+        ItemType item;
+        TaskType task;
+    };
+
+The exact structure can be expanded later if more information is
+required.
+
+For example:
+
+    EVENT_ITEM_ACQUIRED
+    item = ITEM_PHONE
+    task = TASK_UNIVERSITY
+
+The feedback subsystem can then decide how to display or announce this.
+
+============================================================ 9. EXPECTED
+USER / SOFTWARE FLOW
+============================================================
+
+Example task:
+
+    UNIVERSITY
+
+Required:
+
+    Wallet
+    Keys
+    Phone
+    Laptop
+    Charger
+
+Initial inventory:
+
+    Wallet     = BACKPACK
+    Keys       = BACKPACK
+    Phone      = OUTSIDE
+    Laptop     = OUTSIDE
+    Charger    = OUTSIDE
+
+USER SELECTS UNIVERSITY
+
+    startTask(TASK_UNIVERSITY)
+
+CORE:
+
+    TASK_STARTED
+
+    Checking inventory...
+
+    Wallet -> already present
+    Keys   -> already present
+    Phone  -> missing
+    Laptop -> missing
+    Charger -> missing
+
+    Next required item:
+        PHONE
+
+EVENT:
+
+    EVENT_ITEM_REQUIRED
+    item = PHONE
+
+RFID SCAN:
+
+    itemScanned(0xABCD)
+
+Suppose:
+
+    0xABCD -> PHONE
+
+CORE:
+
+    Phone is required.
+    Phone acquired.
+
+EVENT:
+
+    EVENT_ITEM_ACQUIRED
+    item = PHONE
+
+CORE:
+
+    Next required item:
+        LAPTOP
+
+Eventually:
+
+    Wallet  ✓
+    Keys    ✓
+    Phone   ✓
+    Laptop  ✓
+    Charger ✓
+
+CORE:
+
+    TASK COMPLETE
+
+Then:
+
+    TASK_REMINDER
+
+============================================================ 10. UNKNOWN
+RFID BEHAVIOUR
+============================================================
+
+If:
+
+    itemScanned(0x9999)
+
+and 0x9999 is not registered:
+
+The core should NOT silently add it as an arbitrary item.
+
+Instead:
+
+    RFID detected
+         |
+         v
+    Tag known?
+      /     \
+    YES      NO
+     |        |
+     |        +--> EVENT_UNKNOWN_RFID
+     |        |
+     |        +--> Add-new-item flow
+     |
+     v
+    Normal processing
+
+The add-new-item flow can later ask the user to associate:
+
+    0x9999 -> Water Bottle
+
+The exact UI for this belongs outside the core.
+
+============================================================ 11. KNOWN
+BUT UNNECESSARY ITEMS
+============================================================
+
+If a task requires:
+
+    Wallet
+    Keys
+    Phone
+
+and the user scans:
+
+    Water Bottle
+
+the core should recognise:
+
+    Water Bottle is known
+    Water Bottle is not required by current task
+
+It should generate:
+
+    EVENT_ITEM_NOT_REQUIRED
+
+The user may then be prompted by the UI whether the item should still be
+added/managed as inventory.
+
+Important:
+
+Adding an item to inventory must NOT modify the task definition.
+
+The task’s required list remains unchanged.
+
+============================================================ 12. RFID
+BACKPACK GATEWAY — DESIGN NOTES
+============================================================
+
+The proposed V1 physical approach is to use the existing RC522 RFID
+module at the mouth of the backpack.
+
+This is a sensible budget-conscious approach.
+
+The RC522 does not need to read the entire backpack. It can instead act
+as a controlled RFID checkpoint/gateway.
+
+Concept:
+
+             BACKPACK MOUTH
+
+        OUTSIDE          INSIDE
+           |                |
+           |    RFID        |
+           |   CHECKPOINT   |
+           |      []        |
+           |                |
+           +----------------+
+                    ^
+                    |
+              tagged item
+              passes through
+
+The main challenge is NOT simply RFID range.
+
+The main challenge is determining direction.
+
+A single RC522 can detect:
+
+    "I saw tag 0x1234"
+
+but it cannot inherently distinguish:
+
+    IN
+
+from:
+
+    OUT
+
+if the tag passes through the same reader.
+
+============================================================ 13.
+POSSIBLE DIRECTION-DETECTION METHODS
+============================================================
+
+OPTION A — ONE RC522 + EXPLICIT USER MODE
+
+Cheapest and simplest V1.
+
+The system knows whether the user is currently performing an IN or OUT
+operation.
+
+For example:
+
+    IN mode
+       -> scan tag
+       -> itemAdded(tag)
+
+    OUT mode
+       -> scan tag
+       -> itemRemoved(tag)
+
+This is highly suitable for early development.
+
+OPTION B — TWO RC522 READERS
+
+Two readers are physically separated.
+
+Sequence:
+
+    Reader A -> Reader B = IN
+    Reader B -> Reader A = OUT
+
+Potential issue:
+
+-   Multiple 13.56 MHz readers near each other may interfere.
+-   Polling/timing must be carefully coordinated.
+-   Mechanical spacing must be tested.
+
+OPTION C — ONE RC522 + TWO IR BEAM SENSORS
+
+RFID identifies the item.
+
+Two IR sensors determine direction.
+
+Example:
+
+    Sensor A -> Sensor B = entering
+    Sensor B -> Sensor A = leaving
+
+This may be a cost-effective future solution because the RF system and
+direction system have clearly separate jobs.
+
+IMPORTANT SOFTWARE DECISION
+
+None of these direction-detection methods should be embedded into the
+inventory manager.
+
+They should eventually all produce the same logical calls:
+
+    itemAdded(tagID)
+
+or:
+
+    itemRemoved(tagID)
+
+============================================================ 14. RFID
+MECHANICAL / TESTING NOTES
+============================================================
+
+The RC522 should be treated as a controlled checkpoint rather than a
+whole-backpack reader.
+
+Potential mechanical strategy:
+
+-   Mount the reader at or immediately beside the backpack opening.
+-   Create a narrow/funnel-like passage where tagged objects naturally
+    pass close to the antenna.
+-   Keep the tag reasonably close to the reader.
+-   Avoid relying on theoretical maximum read distance.
+-   Test the exact tags, reader board, mounting material and backpack
+    construction.
+
+Before integrating fully, test:
+
+-   Detection at 0 mm
+-   10 mm
+-   20 mm
+-   30 mm
+-   40 mm
+-   50 mm or the practical maximum
+-   Different tag orientations
+-   Different object orientations
+-   Different passing speeds
+-   Multiple nearby tagged objects
+-   False detections
+-   Repeated detections while an object remains near the reader
+
+The software should also include scan debouncing/repeat protection so a
+single physical passage does not generate many logical scans.
+
+============================================================ 15.
+INVENTORY CONSISTENCY / STARTUP CHALLENGE
+============================================================
+
+A physical backpack can change while the microcontroller is powered off.
+
+Therefore:
+
+    software inventory != guaranteed physical reality
+
+Example:
+
+    Software says Wallet = BACKPACK
+
+but the user removed the wallet while the system was switched off.
+
+A future startup/reconciliation mode may therefore be useful.
+
+Concept:
+
+    BOOT
+      |
+      v
+    "Scan / reconcile backpack"
+      |
+      v
+    User passes known items through checkpoint
+      |
+      v
+    Inventory rebuilt
+      |
+      v
+    READY
+
+This does not require a high-powered reader.
+
+It can use the same controlled checkpoint with the user deliberately
+scanning items.
+
+============================================================ 16.
+SOFTWARE TESTING WITHOUT HARDWARE
+============================================================
+
+The V1 software should include a simulation/debug environment.
+
+Example:
+
+    backpack.begin();
+
+    backpack.registerItem(0x1234, ITEM_WALLET);
+    backpack.registerItem(0x5678, ITEM_KEYS);
+    backpack.registerItem(0xABCD, ITEM_PHONE);
+
+    backpack.startTask(TASK_UNIVERSITY);
+
+    backpack.itemScanned(0x1234);
+    backpack.itemScanned(0x5678);
+    backpack.itemScanned(0xABCD);
+
+The Serial Monitor can show:
+
+    ===== BACKPACK DEBUG =====
+
+    TASK: UNIVERSITY
+    STATE: ACQUIRING_ITEMS
+
+    Wallet: ALREADY IN BAG
+    Keys:   ACQUIRED
+    Phone:  ACQUIRED
+    Laptop: REQUIRED
+
+    NEXT ITEM: LAPTOP
+
+A simple debug console could provide commands such as:
+
+    1 - Start University
+    2 - Start Gym
+    3 - Scan Wallet
+    4 - Scan Keys
+    5 - Scan Phone
+    6 - Scan Unknown RFID
+    7 - Stop Task
+    8 - Print Inventory
+    9 - Print State
+
+This allows the complete core to be tested before the hardware is
+finished.
+
+============================================================ 17.
+RECOMMENDED SOFTWARE STRUCTURE
+============================================================
+
+A possible project structure is:
+
+    /src
+        main.cpp
+        Backpack.h
+        Backpack.cpp
+
+        Inventory.h
+        Inventory.cpp
+
+        TaskManager.h
+        TaskManager.cpp
+
+        Task.h
+        Item.h
+        Config.h
+
+        Events.h
+
+        DebugConsole.h
+        DebugConsole.cpp
+
+Later, hardware modules can be added:
+
+        RFID.h
+        RFID.cpp
+
+        Buttons.h
+        Buttons.cpp
+
+        Display.h
+        Display.cpp
+
+        Audio.h
+        Audio.cpp
+
+        Feedback.h
+        Feedback.cpp
+
+The core should compile independently of those hardware files.
+
+============================================================ 18. V1
+IMPLEMENTATION ORDER
+============================================================
+
+PHASE 1 — DATA MODEL
+
+Implement:
+
+-   ItemType
+-   Location
+-   TaskType
+-   Item struct
+-   Task struct
+-   EventType
+-   BackpackEvent
+
+PHASE 2 — INVENTORY ENGINE
+
+Implement and test:
+
+    registerItem()
+    addItem()
+    removeItem()
+    hasItem()
+    findItem()
+    getItemType()
+    clearInventory()
+    printInventory()
+
+PHASE 3 — TASK ENGINE
+
+Implement:
+
+    startTask()
+    stopTask()
+    getCurrentTask()
+    getNextRequiredItem()
+    isTaskComplete()
+
+PHASE 4 — STATE MACHINE
+
+Implement:
+
+    IDLE
+    CHECKING_INVENTORY
+    ACQUIRING_ITEMS
+    TASK_REMINDER
+
+Test all transitions.
+
+PHASE 5 — EVENT SYSTEM
+
+Implement event generation for:
+
+    TASK_STARTED
+    TASK_STOPPED
+    ITEM_REQUIRED
+    ITEM_ACQUIRED
+    ITEM_NOT_REQUIRED
+    UNKNOWN_RFID
+    TASK_COMPLETE
+    TASK_REMINDER
+
+PHASE 6 — RFID SIMULATION
+
+Use:
+
+    itemScanned(tagID)
+
+with fake RFID values.
+
+No physical RFID hardware should be required.
+
+PHASE 7 — SERIAL DEBUG CONSOLE
+
+Build a simple command interface so the whole system can be exercised
+manually.
+
+PHASE 8 — HARDWARE INTEGRATION
+
+Only after the core is stable:
+
+    RC522 -> itemScanned(tagID)
+    direction detector -> itemAdded()/itemRemoved()
+    buttons -> startTask()/stopTask()
+    core events -> LCD/LED/audio
+
+============================================================ 19. DESIGN
+RULES / ENGINEERING PRINCIPLES
+============================================================
+
+RULE 1: The core does not know about hardware.
+
+RULE 2: RFID identifies physical objects; it does not define task logic.
+
+RULE 3: Tasks reference logical ItemTypes, not raw RFID IDs.
+
+RULE 4: One physical item may be required by multiple tasks.
+
+RULE 5: Only one task is active at a time in V1.
+
+RULE 6: A scan event is not automatically the same thing as an item
+entering the backpack.
+
+RULE 7: Direction detection belongs to the RFID/input subsystem, not the
+inventory manager.
+
+RULE 8: The core generates logical events; feedback hardware consumes
+them.
+
+RULE 9: Unknown tags should generate an error/event and enter the
+add-new-item workflow rather than being silently accepted.
+
+RULE 10: Adding a new inventory item must not alter the definition of
+the current task.
+
+RULE 11: Avoid dynamic allocation and excessive String use on the
+eventual Uno-class target.
+
+RULE 12: Use millis()-based timing rather than blocking delay() for
+future reminder/event timing.
+
+RULE 13: Avoid frequent EEPROM writes. EEPROM can be used for persistent
+configuration/tag mappings, but runtime state should not constantly
+write to it.
+
+============================================================ 20. CURRENT
+V1 API — PROPOSED CONTRACT
+============================================================
+
+The following represents the intended interface between the software
+core and the rest of the team.
+
+INPUTS TO CORE:
+
+    begin()
+
+    startTask(TaskType task)
+
+    stopTask()
+
+    itemScanned(uint32_t tagID)
+
+    itemAdded(uint32_t tagID)
+
+    itemRemoved(uint32_t tagID)
+
+STATUS / QUERY FUNCTIONS:
+
+    getState()
+
+    getCurrentTask()
+
+    getCurrentRequiredItem()
+
+    isTaskActive()
+
+    isTaskComplete()
+
+INVENTORY FUNCTIONS:
+
+    registerItem(tagID, itemType)
+
+    addItem(tagID)
+
+    removeItem(tagID)
+
+    hasItem(itemType)
+
+    findItem(tagID)
+
+EVENT OUTPUT:
+
+    hasEvent()
+
+    getEvent()
+
+or an equivalent callback/event mechanism.
+
+The exact function signatures can be refined during implementation, but
+the conceptual contract should remain stable.
+
+============================================================ 21. CHAT /
+AI DESIGN DEVELOPMENT NOTES
+============================================================
+
+This section documents the reasoning and design changes developed during
+the discussion so that the team can understand why the current
+architecture was chosen.
+
+21.1 INITIAL SOFTWARE CONCEPT
+
+The project began with a backpack assistant concept containing:
+
+-   Inventory of items
+-   Adding/removing items
+-   Tasks requiring specific items
+-   Task selection
+-   Task start/stop
+-   Task completion/status
+-   Audio associated with tasks
+-   RFID tags as item identifiers
+-   LCD/LED/buzzer/audio feedback
+-   Buttons for user input
+-   Possible clock functionality
+
+The initial conceptual software architecture separated:
+
+    Item definitions
+    Physical inventory
+    Task definitions
+    Hardware/UI
+
+21.2 IMPORTANT DATA-MODEL INSIGHT
+
+A major architectural distinction was identified:
+
+    RFID tag != item type
+
+The RFID tag identifies a particular physical object.
+
+The ItemType identifies what that object is.
+
+Example:
+
+    RFID 0x1234 -> Wallet
+
+Tasks should therefore reference:
+
+    ITEM_WALLET
+
+rather than:
+
+    RFID 0x1234
+
+This makes the system much more flexible and allows the same logical
+item to be used in multiple tasks.
+
+21.3 TASK LOGIC AGREEMENTS
+
+The agreed V1 behaviour is:
+
+-   Only one task can be active.
+-   Starting a task first checks current inventory.
+-   Items already in the backpack are skipped.
+-   The user is guided through the missing items.
+-   Missing items are collected in a defined order.
+-   Once all required items are present, the system enters task reminder
+    mode.
+-   Reminder audio can repeat until the task is stopped or a new task is
+    started.
+-   An item can be required by multiple tasks.
+-   An unknown RFID tag should trigger an error and add-new-item
+    process.
+-   A known item that is not required should generate a prompt/event
+    rather than silently changing the task.
+
+21.4 WHY THE SOFTWARE WAS DECOUPLED FROM HARDWARE
+
+The team consists of three people, with different hardware/software
+responsibilities.
+
+The coding work needs to progress before the final RFID, feedback and
+power systems are complete.
+
+Therefore, the core was deliberately designed around callable functions
+and events.
+
+For example:
+
+    itemScanned(0x1234)
+
+represents the event:
+
+    "The RFID subsystem saw tag 0x1234."
+
+The core then handles the software consequences.
+
+This means hardware can be changed without rewriting the inventory/task
+logic.
+
+21.5 RFID BACKPACK GATEWAY DISCUSSION
+
+The team has a limited budget of approximately $100 and already owns an
+RC522 RFID module from an Arduino kit.
+
+The initial idea was to mount the RC522 at the backpack mouth so that
+objects pass through the reader when entering or leaving.
+
+This was considered a good V1 direction because:
+
+-   It uses existing hardware.
+-   It avoids the cost of a high-power whole-backpack RFID system.
+-   It turns the backpack opening into a controlled RFID checkpoint.
+-   The reader only needs to reliably detect a tag as it passes through
+    the checkpoint.
+
+The important engineering issue identified was direction detection.
+
+A single RFID reader can determine that a tag was seen, but it does not
+inherently determine whether the object moved into or out of the
+backpack.
+
+21.6 DIRECTION-DETECTION OPTIONS IDENTIFIED
+
+Three main approaches were discussed:
+
+1.  Single RC522 + explicit IN/OUT mode
+    -   Lowest cost
+    -   Simplest
+    -   Excellent for V1
+2.  Two RC522 readers
+    -   Sequence of reader detections can determine direction
+    -   A -> B means entering
+    -   B -> A means leaving
+    -   Requires careful management of RF interference and timing
+3.  RC522 + two IR beam sensors
+    -   RFID identifies the object
+    -   IR sensors determine movement direction
+    -   Potentially inexpensive and robust
+    -   Direction logic remains separate from inventory logic
+
+21.7 IMPORTANT SOFTWARE CONSEQUENCE OF THE RFID DISCUSSION
+
+The RFID mechanism should not be allowed to dictate the inventory
+architecture.
+
+Regardless of physical implementation, the core should eventually
+receive logical calls such as:
+
+    itemAdded(tagID)
+
+or:
+
+    itemRemoved(tagID)
+
+This keeps the core independent of the physical sensing method.
+
+21.8 SINGLE-READER SCAN DEBOUNCING
+
+A physical tag may remain within the RC522 detection area long enough to
+be detected repeatedly.
+
+Therefore, the eventual RFID subsystem will require repeated-read
+protection/debouncing.
+
+For example, after detecting a tag, the subsystem could temporarily
+ignore the same tag for a short period.
+
+The exact timing should be determined experimentally rather than
+hard-coded prematurely.
+
+21.9 MECHANICAL RFID TESTING
+
+The RC522 should be tested using the actual tags and backpack
+construction.
+
+Important variables include:
+
+-   Reader-to-tag distance
+-   Tag orientation
+-   Object orientation
+-   Movement speed
+-   Backpack material
+-   Nearby objects
+-   Multiple tags
+-   Repeated detection
+
+The physical design should encourage tagged objects to pass close to the
+reader rather than relying on long-range detection.
+
+21.10 STARTUP INVENTORY CHALLENGE
+
+A further issue identified was that the physical contents of the
+backpack can change while the system is powered off.
+
+Therefore, an inventory stored only in software cannot always be trusted
+after startup.
+
+A future startup/reconciliation procedure was proposed where the user
+deliberately scans the items currently in the backpack through the RFID
+checkpoint.
+
+This can rebuild the software’s best estimate of the physical inventory.
+
+============================================================ 22.
+IMMEDIATE NEXT STEP
+============================================================
+
+The next engineering task is to implement the V1 software core.
+
+Recommended first deliverable:
+
+    A standalone C++ program containing:
+
+    - Item database
+    - Inventory manager
+    - Task definitions
+    - Task manager
+    - Backpack state machine
+    - Event system
+    - Simulated RFID input
+    - Serial/debug test interface
+
+The first version should NOT depend on:
+
+    - RC522 hardware
+    - LCD
+    - OLED
+    - Buttons
+    - DFPlayer
+    - LEDs
+    - Buzzer
+    - Clock
+    - Power system
+
+Once this software passes its simulated tests, the hardware team can
+integrate their subsystems through the agreed API.
+
+The target outcome is:
+
+    HARDWARE INPUT
+          |
+          v
+    CORE FUNCTION CALL
+          |
+          v
+    INVENTORY / TASK LOGIC
+          |
+          v
+    LOGICAL EVENT
+          |
+          v
+    HARDWARE FEEDBACK
+
+This architecture should allow the three team members to work largely
+independently while retaining a clean and predictable integration point.
