@@ -1,7 +1,7 @@
 # Assistive Backpack for Independent Living Coding project
 
 This git repository documents the work and code base created by Oliver McKinlay 
-with credity to Callum Storra and Emmerson Gammaldi for our Electronic Systems 
+with special thanks and credit to Callum Storra and Emmerson Gammaldi. This was our project for the Electronic Systems 
 Implamentation subject during our time at Melbourne University semester 2 2026.
 For the complete project documentation check in the docs folder of this repository.
 https://github.com/OllieMMM/Assistive-Backpack-Code/tree/main/docs
