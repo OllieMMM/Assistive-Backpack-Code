@@ -1,0 +1,3 @@
+Just generated the first header files
+Now will compile and test the item class and structs to validate.
+Refer to step 3 - Compile and test Item.h in ChaptGPT logs.
