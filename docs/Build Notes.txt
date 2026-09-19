@@ -57,3 +57,13 @@ RFID       Type          Location
 0xABCD     Phone         Outside
 
 It has associated functions to query the inventory for specific items or status.
+
+Currently working on Inveotry functionality. Generated the Invenotry.h file
+This declares all of the functions and private data in the iventory. 
+The Inventory.cpp file then implaments all of the functions used by inventory
+I have also added a .getItemCount which was not in the ChaptGPT logs but is a useful feature.
+Add new function methodology
+ 1. Define a prototype function in the Inventory.h header file
+ 2. Implament the function in Inventory.cpp
+ 3. Call and use the function in Main.cpp
+ 4. Build and link the files to an executable.
