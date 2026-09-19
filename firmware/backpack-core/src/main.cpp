@@ -1,9 +1,20 @@
 #include <iostream>
 
+#include "Config.h"
+#include "Item.h"
 #include "Task.h"
+#include "Events.h"
 
 int main()
 {
+    // Create a physical item
+    Item wallet;
+
+    wallet.tagID = 0x1234;
+    wallet.type = ItemType::Wallet;
+    wallet.location = Location::Backpack;
+
+    // Create a task
     Task universityTask;
 
     universityTask.type = TaskType::University;
@@ -15,12 +26,28 @@ int main()
     universityTask.requiredItems[4] = ItemType::Charger;
 
     universityTask.itemCount = 5;
+    universityTask.reminderAudio = 1;
 
-    std::cout << "University task created!" << std::endl;
-    std::cout << "Required items: "
-              << static_cast<int>(universityTask.itemCount) << std::endl;
-    std::cout << "Item 2: " 
-              << static_cast<int>(universityTask.requiredItems[1]) 
+    // Create an event
+    // This will be based and triggered by the UI
+    BackpackEvent event;
+
+    event.type = EventType::ItemAcquired;
+    event.item = ItemType::Wallet;
+    event.task = TaskType::University;
+
+    std::cout << "=== Backpack Data Model Test ===" << std::endl;
+
+    std::cout << "Wallet RFID: 0x"
+              << std::hex << wallet.tagID << std::endl;
+
+    std::cout << std::dec;
+
+    std::cout << "University task items: "
+              << static_cast<int>(universityTask.itemCount)
               << std::endl;
+
+    std::cout << "Data model test successful!" << std::endl;
+
     return 0;
 }
