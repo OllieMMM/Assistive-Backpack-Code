@@ -11,9 +11,10 @@
 
 enum class TaskType
 {
-    University,
-    Gym,
-    Work
+    None,       // = 0
+    University, // = 1
+    Gym,        // = 2
+    Work        // = 3
 };
 
 struct Task

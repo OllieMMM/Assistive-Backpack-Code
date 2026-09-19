@@ -12,20 +12,20 @@
 // Enum creates a new data type. Can now write, ItemType item = ItemType::Phone.
 enum class ItemType
 {
-    Unknown,
-    Wallet,
-    Laptop, 
-    Phone,
-    Keys,
-    Charger,
-    WaterBottle
+    Unknown,    // = 0
+    Wallet,     // = 1
+    Laptop,     // = 2
+    Phone,      // = 3
+    Keys,       // = 4
+    Charger,    // = 5
+    WaterBottle // = 6
 };
 
 enum class Location
 {
-    Unknown,
-    Outside,
-    Backpack
+    Unknown, // = 0
+    Outside, // = 1
+    Backpack // = 2
 };
 
 struct Item

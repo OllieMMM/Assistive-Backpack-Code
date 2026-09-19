@@ -7,3 +7,4 @@
 
 constexpr uint8_t MAX_TASK_ITEMS = 10; // Defines the maximum number of task items that can be stored.
 constexpr uint8_t MAX_ITEMS = 20; // Defines the maximum number of items that can be stored in backpack inventory manager.
+constexpr uint8_t MAX_TASKS = 5; // Defines the maximum number of tasks that can be stored.
