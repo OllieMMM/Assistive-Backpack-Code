@@ -58,7 +58,7 @@ RFID       Type          Location
 
 It has associated functions to query the inventory for specific items or status.
 
-Currently working on Inveotry functionality. Generated the Invenotry.h file
+Currently working on Inventory functionality. Generated the Invenotry.h file
 This declares all of the functions and private data in the iventory. 
 The Inventory.cpp file then implaments all of the functions used by inventory
 I have also added a .getItemCount which was not in the ChaptGPT logs but is a useful feature.
@@ -67,3 +67,15 @@ Add new function methodology
  2. Implament the function in Inventory.cpp
  3. Call and use the function in Main.cpp
  4. Build and link the files to an executable.
+
+Finshed Phase 3 and moved onto phase 4, refer to dev logs
+
+Left off on Phase 4D the checkInventory function of the chatGPT logs. 
+Added another safety check to the TaskManager::startTask function.
+Currently working through the BackPack.cpp and Backpack.h files and functions.
+This is the FSM implamentation.
+Current states include:
+    IDLE
+    CHECKING_INVENTORY
+    ACQUIRING_ITEMS
+    TASK_REMINDER

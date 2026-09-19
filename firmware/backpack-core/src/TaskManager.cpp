@@ -39,6 +39,11 @@ bool TaskManager::registerTask(const Task& task)
 // Returns true if the task was successfully started, false otherwise.
 bool TaskManager::startTask(TaskType type)
 {
+    if (taskActive)
+    {
+        return false;
+    }
+    
     for (uint8_t i = 0; i < taskCount; i++)
     {
         if (tasks[i].type == type)

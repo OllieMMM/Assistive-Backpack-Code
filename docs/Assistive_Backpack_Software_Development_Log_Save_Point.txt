@@ -1,0 +1,1457 @@
+ASSISTIVE BACKPACK PROJECT — SOFTWARE DEVELOPMENT LOG / SAVE POINT
+ESI 2026 — V1 SOFTWARE CORE
+Date: 19 September 2026
+
+======================================================================
+PURPOSE OF THIS DOCUMENT
+======================================================================
+
+This document is a development save point for the Assistive Backpack V1
+software project. It records the software environment, architecture,
+completed Phases 1–3, current files, important implementation decisions,
+user-added changes, known limitations, and the planned next steps.
+
+It is intended to be saved with the project documentation so that
+development can continue from Phase 4 even if the current chat history is
+lost.
+
+Primary design principle:
+    BUILD THE BACKPACK BRAIN FIRST.
+    KEEP THE BRAIN INDEPENDENT OF HARDWARE.
+
+The V1 software is deliberately being developed first as ordinary desktop
+C++ software. Hardware-specific code will be integrated later.
+
+======================================================================
+1. PROJECT / DEVELOPMENT CONTEXT
+======================================================================
+
+Project:
+    Assistive Backpack Project — ESI Semester 2, 2026
+
+Core software objective:
+    Develop the backpack's central logic as a hardware-independent C++
+    program that can be tested without the physical backpack.
+
+The software core is responsible for:
+    - Inventory management
+    - RFID-tag-to-item mapping
+    - Logical item types
+    - Task definitions and selection
+    - Checking required items
+    - Identifying the next missing item
+    - Task completion
+    - Task stopping
+    - Eventually, state-machine behaviour and event generation
+
+Hardware is intentionally NOT part of the current core implementation.
+
+Future hardware includes:
+    - Arduino Uno
+    - RC522 RFID reader
+    - 16x2 LCD
+    - RGB LED
+    - Buzzer
+    - Four buttons
+    - Audio / DFPlayer-style feedback
+    - Battery / power system
+
+The software architecture requires hardware subsystems to communicate
+with the core through logical function calls/events rather than placing
+hardware calls inside the core.
+
+======================================================================
+2. DEVELOPMENT ENVIRONMENT / REPOSITORY STATUS
+======================================================================
+
+The project is stored under the user's OneDrive university project area.
+
+Current relevant project path:
+
+    OneDrive/
+    └── Documents/
+        └── University/
+            └── 2026/
+                └── Semester 2/
+                    └── ESI/
+                        └── Assistive Backpack Code/
+                            └── firmware/
+                                └── backpack-core/
+
+The current core project uses:
+
+    VS Code
+    MSYS2 UCRT64 toolchain
+    g++
+    CMake
+    Ninja
+    CMake Tools
+    Git / GitHub
+
+The MSYS2 environment has been updated and configured so that the VS Code
+PowerShell terminal recognises:
+
+    cmake --version
+    ninja --version
+    g++ --version
+
+CMake has been configured to use the UCRT64 toolchain.
+
+The project can currently:
+    - CMake Configure successfully
+    - CMake Build successfully
+    - Produce backpack.exe
+    - Run backpack.exe from the terminal
+    - Run the executable from Command Prompt
+    - Compile and run the current test code
+
+A previous direct g++ compilation successfully used:
+
+    C:\msys64\ucrt64\bin\g++.exe
+
+The exact compilation command previously observed was equivalent to:
+
+    g++ -fdiagnostics-color=always -g
+        src/main.cpp
+        -o src/main.exe
+
+This was an early Hello World / compiler verification step. The project
+has since moved to the CMake-based build and uses build/ rather than
+keeping executables in src/.
+
+Current build directory:
+    build/
+
+The old out/ directory was removed.
+
+The temporary main.exe was removed.
+
+CMakePresets.json:
+    Removed during environment setup.
+
+.vscode/:
+    Removed during environment setup.
+
+This is NOT currently considered a problem because CMake Tools and the
+UCRT64 environment are working correctly. CMakePresets.json and/or
+.vscode configuration can be restored later if they become useful for
+reproducible configuration, debugging, team setup, or convenience.
+
+.gitignore:
+    Currently contains:
+        build/
+
+This is sufficient for the current setup. It can be expanded later if
+additional generated files appear.
+
+docs/:
+    Existing project documentation remains in place.
+
+README.md:
+    Existing README is considered acceptable for the current stage.
+
+GitHub:
+    Repository is connected and working.
+    Completed phases have been committed/pushed.
+
+Debugging:
+    A debug build/test has already been run successfully enough to confirm
+    that the environment can flag an issue. A deeper debugger workflow can
+    be developed later if useful.
+
+======================================================================
+3. TARGET V1 ARCHITECTURE
+======================================================================
+
+The intended architecture is:
+
+    HARDWARE LAYER
+        |
+        | input events / logical commands
+        v
+    BACKPACK CORE
+        |
+        +-- State Machine
+        +-- Inventory Manager
+        +-- Task Manager
+        +-- Item Database / data definitions
+        +-- Event Generator
+        |
+        | output events
+        v
+    FEEDBACK / UI LAYER
+        |
+        +-- LCD
+        +-- LED
+        +-- Buzzer
+        +-- Audio
+        +-- etc.
+
+Important rule:
+
+The core must NOT directly contain calls such as:
+
+    lcd.print(...)
+    digitalWrite(...)
+    player.play(...)
+    RFID.read(...)
+
+Instead, the core should generate logical information/events such as:
+
+    EVENT_ITEM_ACQUIRED
+    EVENT_UNKNOWN_RFID
+    EVENT_TASK_COMPLETE
+
+Hardware/UI subsystems will later interpret these events.
+
+======================================================================
+4. PHASE ROADMAP
+======================================================================
+
+Planned implementation order:
+
+    Phase 1 — Data Model
+        DONE
+
+    Phase 2 — Inventory Engine
+        DONE
+
+    Phase 3 — Task Engine
+        CURRENTLY IMPLEMENTING / CHECKPOINT
+
+    Phase 4 — State Machine
+        NEXT
+
+    Phase 5 — Event System
+        FUTURE
+
+    Phase 6 — RFID Simulation / Integration
+        FUTURE
+
+    Phase 7 — Serial Debug Console / UI simulation
+        FUTURE
+
+    Phase 8 — Arduino / physical hardware integration
+        FUTURE
+
+The overall implementation philosophy is:
+
+    responsibility
+        ->
+    header/interface
+        ->
+    implementation
+        ->
+    compile
+        ->
+    test
+        ->
+    Git commit
+        ->
+    next module
+
+This is being used deliberately as a learning workflow rather than
+writing the entire system at once.
+
+======================================================================
+5. PHASE 1 — DATA MODEL
+======================================================================
+
+STATUS:
+    COMPLETED
+
+Purpose:
+    Establish the fundamental types used throughout the backpack core
+    before implementing behaviour.
+
+Files implemented:
+
+    include/
+        Config.h
+        Item.h
+        Task.h
+        Events.h
+
+The Phase 1 files were implemented, understood, compiled and tested.
+
+A main.cpp test program was copied/used to verify the data definitions and
+the program compiled and executed correctly.
+
+The Phase 1 changes were committed to GitHub.
+
+----------------------------------------------------------------------
+5.1 Config.h
+----------------------------------------------------------------------
+
+Purpose:
+    Store system-wide configuration limits and constants in one location.
+
+Key concepts:
+    - Fixed-size storage
+    - Avoid unnecessary dynamic memory
+    - Configuration values should not be scattered throughout the code
+    - Future Arduino Uno-class constraints make predictable memory useful
+
+Important configuration concept:
+
+    MAX_ITEMS
+    MAX_TASK_ITEMS
+    MAX_TASKS
+
+MAX_TASKS was added/used during the transition into Phase 3.
+
+The exact current numeric values should be treated as project configuration
+rather than fundamental architecture. They can be changed later in one
+place.
+
+----------------------------------------------------------------------
+5.2 Item.h
+----------------------------------------------------------------------
+
+Purpose:
+    Define the logical representation of a physical backpack item.
+
+Core distinction:
+
+    RFID tag ID = physical object identifier
+    ItemType    = logical item category
+
+Conceptual model:
+
+    struct Item
+    {
+        uint32_t tagID;
+        ItemType type;
+        Location location;
+    };
+
+ItemType contains the logical item categories used by tasks, such as:
+
+    Wallet
+    Keys
+    Phone
+    Laptop
+    Charger
+    WaterBottle
+
+Location represents where the physical object is considered to be, such
+as:
+
+    Unknown
+    Outside
+    Backpack
+
+Important architectural decision:
+
+Tasks do NOT store RFID IDs as requirements.
+
+Tasks store ItemType values.
+
+This means two physical wallets with different RFID tags can both satisfy
+a task requirement for Wallet.
+
+----------------------------------------------------------------------
+5.3 Task.h
+----------------------------------------------------------------------
+
+Purpose:
+    Define the data structure describing a task.
+
+Conceptual structure:
+
+    struct Task
+    {
+        TaskType type;
+        ItemType requiredItems[MAX_TASK_ITEMS];
+        uint8_t itemCount;
+        uint8_t reminderAudio;
+    };
+
+Important design decisions:
+    - A task has a TaskType identifier.
+    - A task contains an ordered list of required ItemTypes.
+    - itemCount determines how many array entries are valid.
+    - reminderAudio can later identify audio associated with a task.
+    - Tasks reference logical item types, not RFID IDs.
+
+The ordered list is important because the Task Manager can use it to
+determine the next missing item in a deterministic order.
+
+TaskType should include a "no active task" value, conceptually:
+
+    TaskType::None
+
+and then actual task types such as:
+
+    University
+    Gym
+    Work
+
+The exact task names/content can be changed as the project develops.
+
+----------------------------------------------------------------------
+5.4 Events.h
+----------------------------------------------------------------------
+
+Purpose:
+    Define logical events that the core can later emit without directly
+    controlling hardware.
+
+Planned event types include:
+
+    EVENT_TASK_STARTED
+    EVENT_TASK_STOPPED
+    EVENT_TASK_COMPLETE
+    EVENT_ITEM_REQUIRED
+    EVENT_ITEM_ACQUIRED
+    EVENT_ITEM_ALREADY_PRESENT
+    EVENT_ITEM_NOT_REQUIRED
+    EVENT_UNKNOWN_RFID
+    EVENT_ITEM_ADDED
+    EVENT_ITEM_REMOVED
+    EVENT_TASK_REMINDER
+
+Conceptual event structure:
+
+    struct BackpackEvent
+    {
+        EventType type;
+        ItemType item;
+        TaskType task;
+    };
+
+The event system itself has NOT yet been implemented as a functioning
+queue/callback system. Phase 1 only establishes the data definitions.
+
+======================================================================
+6. PHASE 2 — INVENTORY ENGINE
+======================================================================
+
+STATUS:
+    COMPLETED
+
+Files implemented:
+
+    include/
+        Inventory.h
+
+    src/
+        Inventory.cpp
+
+Purpose:
+    Manage known physical RFID-tagged items and their current logical
+    state/location.
+
+The Inventory Manager is responsible for:
+    - Registering RFID tags
+    - Associating tags with ItemType
+    - Tracking physical items
+    - Tracking location
+    - Finding an item by RFID
+    - Getting an item's logical type
+    - Adding/removing items
+    - Checking whether a logical item type is currently available
+    - Clearing inventory
+    - Enforcing maximum inventory capacity
+
+The Task Manager will later ask the Inventory Manager questions such as:
+
+    inventory.hasItem(ItemType::Phone)
+
+The Inventory Manager does NOT define task requirements.
+
+----------------------------------------------------------------------
+6.1 Important Phase 2 architecture
+----------------------------------------------------------------------
+
+The distinction is:
+
+    RFID tag
+        |
+        v
+    physical Item
+        |
+        v
+    ItemType
+
+For example:
+
+    0x1234 -> Wallet
+    0x5678 -> Keys
+    0xABCD -> Phone
+
+A task requirement is:
+
+    Phone
+
+not:
+
+    0xABCD
+
+This allows the software to treat different physical objects of the same
+logical type as equivalent for task purposes.
+
+----------------------------------------------------------------------
+6.2 Fixed-capacity design
+----------------------------------------------------------------------
+
+The Inventory Engine uses a fixed array and a count.
+
+Conceptually:
+
+    Item items[MAX_ITEMS];
+    uint8_t itemCount;
+
+This means:
+
+    capacity = MAX_ITEMS
+    valid entries = itemCount
+
+This approach is deliberately simple and predictable for eventual
+embedded use.
+
+The user tested the maximum-item limit and confirmed that the limit is
+obeyed correctly.
+
+----------------------------------------------------------------------
+6.3 User-added Inventory function
+----------------------------------------------------------------------
+
+The user independently added:
+
+    getItemCount()
+
+This function returns the number of currently registered items.
+
+The user:
+    - Added the function declaration to Inventory.h
+    - Implemented it in Inventory.cpp
+    - Tested it from main.cpp
+
+This was not merely copied from the original suggested implementation.
+
+It is an important development milestone because the user has begun
+extending the API based on understanding of the data model.
+
+----------------------------------------------------------------------
+6.4 Current testing organisation
+----------------------------------------------------------------------
+
+The user's main.cpp test structure now separates tests approximately as:
+
+    int data_test()
+    int inventory_test()
+    int task_test()       // being developed in Phase 3
+
+and calls these from:
+
+    int main()
+
+This is currently acting as a simple manual test harness.
+
+It is intentionally lightweight and easy to understand.
+
+A formal unit-testing framework is not currently required.
+
+======================================================================
+7. PHASE 3 — TASK ENGINE
+======================================================================
+
+STATUS:
+    CURRENT DEVELOPMENT PHASE
+
+Purpose:
+    Build the task reasoning engine independently from the main state
+    machine.
+
+Task Manager responsibilities:
+
+    - Store task definitions
+    - Register tasks
+    - Prevent duplicate task definitions
+    - Start one active task
+    - Stop the active task
+    - Report current task
+    - Determine the next missing required item
+    - Determine whether all required items are present
+    - Interface with the existing Inventory Manager
+
+The Task Manager should NOT:
+    - Read RFID hardware
+    - Control LCD/LED/buzzer/audio
+    - Determine RFID direction
+    - Implement the main FSM
+    - Modify task definitions when inventory changes
+
+----------------------------------------------------------------------
+7.1 TaskManager dependency on Inventory
+----------------------------------------------------------------------
+
+The planned interface uses dependency injection through a reference:
+
+    explicit TaskManager(Inventory& inventory);
+
+The Task Manager stores:
+
+    Inventory& inventory;
+
+This means it uses the existing Inventory object rather than creating a
+second independent inventory.
+
+Desired relationship:
+
+    Inventory
+        ^
+        |
+    TaskManager
+
+There must be one source of truth for the physical inventory.
+
+This is an important C++ learning point:
+    - A reference can refer to an existing object.
+    - The TaskManager does not own or duplicate the Inventory.
+    - The constructor receives the dependency.
+
+----------------------------------------------------------------------
+7.2 Current TaskManager.h design
+----------------------------------------------------------------------
+
+The Phase 3 interface developed so far is conceptually:
+
+    #pragma once
+
+    #include <cstdint>
+
+    #include "Config.h"
+    #include "Inventory.h"
+    #include "Task.h"
+
+    class TaskManager
+    {
+    public:
+
+        explicit TaskManager(Inventory& inventory);
+
+        bool registerTask(const Task& task);
+
+        bool startTask(TaskType type);
+
+        void stopTask();
+
+        TaskType getCurrentTask() const;
+
+        ItemType getNextRequiredItem() const;
+
+        bool isTaskComplete() const;
+
+        bool isTaskActive() const;
+
+    private:
+
+        const Task* findTask(TaskType type) const;
+
+        Inventory& inventory;
+
+        Task tasks[MAX_TASKS];
+        uint8_t taskCount = 0;
+
+        TaskType activeTask = TaskType::None;
+        bool taskActive = false;
+    };
+
+The exact local implementation may differ slightly if the user has
+modified it, but this is the current intended API/design baseline.
+
+----------------------------------------------------------------------
+7.3 TaskManager internal state
+----------------------------------------------------------------------
+
+The TaskManager maintains:
+
+    Task tasks[MAX_TASKS];
+
+    uint8_t taskCount;
+
+    TaskType activeTask;
+
+    bool taskActive;
+
+This follows the same fixed-capacity/count pattern learned in Phase 2.
+
+The distinction is:
+
+    MAX_TASKS = total storage capacity
+    taskCount = number of registered task definitions
+
+----------------------------------------------------------------------
+7.4 registerTask()
+----------------------------------------------------------------------
+
+Purpose:
+    Add a new task definition.
+
+Expected behaviour:
+
+    - Reject if taskCount >= MAX_TASKS
+    - Reject duplicate TaskType
+    - Copy the Task into the next available slot
+    - Increment taskCount
+    - Return success/failure
+
+The duplicate check prevents ambiguity when startTask(TaskType) is later
+used to identify a task.
+
+----------------------------------------------------------------------
+7.5 startTask()
+----------------------------------------------------------------------
+
+Purpose:
+    Select an existing task as the active task.
+
+Expected behaviour:
+    - Search registered task definitions
+    - If matching TaskType exists:
+          activeTask = type
+          taskActive = true
+          return true
+    - Otherwise return false
+
+Important limitation:
+    startTask() does NOT yet run the full backpack FSM.
+
+Inventory checking and state transitions will belong to Phase 4.
+
+----------------------------------------------------------------------
+7.6 stopTask()
+----------------------------------------------------------------------
+
+Purpose:
+    End the currently active task session.
+
+Expected behaviour:
+
+    activeTask = TaskType::None
+    taskActive = false
+
+Stopping a task does NOT delete the task definition.
+
+The task definition remains registered and can be started again.
+
+----------------------------------------------------------------------
+7.7 findTask()
+----------------------------------------------------------------------
+
+Private helper:
+
+    const Task* findTask(TaskType type) const;
+
+Purpose:
+    Search the task definition array and return a pointer to the matching
+    Task.
+
+Returns:
+    pointer to Task if found
+    nullptr if not found
+
+This reinforces the pointer/search pattern already learned in the
+Inventory Engine.
+
+----------------------------------------------------------------------
+7.8 getNextRequiredItem()
+----------------------------------------------------------------------
+
+Purpose:
+    Return the first required ItemType in the active task that is not
+    currently available in the Inventory.
+
+Conceptual algorithm:
+
+    if no task active:
+        return Unknown
+
+    find active Task
+
+    for each required item in task order:
+        if inventory.hasItem(required item) == false:
+            return that item
+
+    return Unknown
+
+Example:
+
+    Task:
+        Wallet
+        Keys
+        Phone
+        Laptop
+
+    Inventory:
+        Wallet = Backpack
+        Keys   = Backpack
+        Phone  = Outside
+        Laptop = Outside
+
+Result:
+
+    Phone
+
+The function therefore provides a deterministic answer to:
+
+    "What item should the backpack ask the user to get next?"
+
+----------------------------------------------------------------------
+7.9 isTaskComplete()
+----------------------------------------------------------------------
+
+Purpose:
+    Determine whether every required ItemType is currently available.
+
+Conceptual algorithm:
+
+    if no task active:
+        return false
+
+    find active Task
+
+    for every required item:
+        if inventory.hasItem(required item) == false:
+            return false
+
+    return true
+
+Therefore:
+
+    any missing item -> false
+    no missing items  -> true
+
+This uses an early-return pattern.
+
+----------------------------------------------------------------------
+7.10 isTaskActive()
+----------------------------------------------------------------------
+
+Purpose:
+    Provide controlled access to the active-task state.
+
+Returns:
+
+    true  = a task is active
+    false = no task is active
+
+----------------------------------------------------------------------
+7.11 Key C++ concepts learned in Phase 3
+----------------------------------------------------------------------
+
+The Task Engine introduced/reinforced:
+
+    References:
+        Inventory& inventory
+
+    Constructor dependency injection:
+        TaskManager(Inventory& inventory)
+
+    const references:
+        const Task& task
+
+    Member initializer lists:
+        : inventory(inventory)
+
+    Pointers:
+        const Task*
+
+    Pointer member access:
+        task->itemCount
+
+    nullptr:
+        used when a search fails
+
+    Early returns:
+        immediately return once the required condition/result is known
+
+    Encapsulation:
+        callers use functions such as getCurrentTask() instead of
+        directly modifying activeTask
+
+    Composition:
+        TaskManager uses an Inventory instead of duplicating it
+
+======================================================================
+8. CURRENT TESTING STRATEGY
+======================================================================
+
+Current main.cpp is acting as a simple manual test harness.
+
+Tests are separated into functions, currently including:
+
+    data_test()
+    inventory_test()
+
+and Phase 3 is being added as:
+
+    task_test()
+
+The general test process is:
+
+    create objects
+    register data
+    perform operations
+    print/inspect results
+    compile
+    execute
+    verify expected behaviour
+
+Important Phase 2 tests already completed:
+    - Normal item registration
+    - Inventory operations
+    - Maximum inventory capacity
+    - getItemCount()
+
+Important Phase 3 tests to complete:
+    - Task registration
+    - Duplicate task rejection
+    - MAX_TASKS capacity
+    - Starting a valid task
+    - Rejecting an unknown task
+    - Stopping a task
+    - Current task reporting
+    - Next missing item
+    - Skipping already-present items
+    - Task completion
+    - Logical ItemType behaviour
+    - Two physical RFID tags representing the same ItemType
+    - Adding unrelated inventory items without altering the task
+
+Example conceptual task:
+
+    UNIVERSITY
+        Wallet
+        Keys
+        Phone
+        Laptop
+        Charger
+
+Example conceptual inventory:
+
+    0x1234 -> Wallet
+    0x5678 -> Keys
+    0xABCD -> Phone
+    0xDEAD -> Laptop
+
+If Wallet and Keys are in the backpack, the next required item should be
+Phone.
+
+After Phone is added, the next required item should become Laptop.
+
+After all requirements are present, isTaskComplete() should return true.
+
+======================================================================
+9. IMPORTANT DESIGN DECISIONS TO PRESERVE
+======================================================================
+
+1. HARDWARE INDEPENDENCE
+
+The core must remain usable on a desktop without physical hardware.
+
+2. RFID IS NOT A TASK REQUIREMENT
+
+RFID identifies a physical object.
+
+ItemType represents the logical object category.
+
+Tasks use ItemType.
+
+3. ONE ACTIVE TASK
+
+V1 supports one active task at a time.
+
+4. INVENTORY AND TASKS ARE SEPARATE
+
+Inventory answers:
+    "What do I have?"
+
+TaskManager answers:
+    "What does this task require?"
+
+5. SCAN DOES NOT AUTOMATICALLY MEAN IN/OUT
+
+An RFID scan alone does not inherently determine whether an item entered
+or left the backpack.
+
+Physical direction detection will later be handled by the RFID/input
+subsystem.
+
+6. EVENTS INSTEAD OF HARDWARE COMMANDS
+
+Core logic should produce logical events.
+
+Hardware/UI modules consume those events.
+
+7. UNKNOWN RFID TAGS ARE NOT SILENTLY ADDED
+
+An unknown tag should eventually cause:
+
+    EVENT_UNKNOWN_RFID
+
+and a future UI flow can associate it with an ItemType.
+
+8. ADDING AN INVENTORY ITEM MUST NOT MODIFY A TASK
+
+Inventory and task definitions are separate concepts.
+
+9. A TASK DEFINITION PERSISTS AFTER STOPPING
+
+stopTask() ends the current task session but does not delete the task
+definition.
+
+10. FIXED-SIZE DATA STRUCTURES
+
+Fixed arrays and explicit counts are currently preferred because the
+eventual target is an Arduino-class embedded system with constrained
+resources.
+
+11. NON-BLOCKING FUTURE DESIGN
+
+Future timing behaviour should favour millis()-style timing rather than
+long delay() calls.
+
+12. EEPROM IS FUTURE WORK
+
+Task persistence and inventory persistence can be added later.
+
+Frequent EEPROM writes should be avoided.
+
+======================================================================
+10. CURRENT OVERSIGHTS / LIMITATIONS
+======================================================================
+
+These are intentional limitations at the current development stage, not
+necessarily bugs.
+
+----------------------------------------------------------------------
+10.1 State machine does not exist yet
+----------------------------------------------------------------------
+
+The system does not yet implement the complete backpack FSM.
+
+Required future states include:
+
+    IDLE
+    CHECKING_INVENTORY
+    ACQUIRING_ITEMS
+    TASK_REMINDER
+
+Optional future state:
+
+    TASK_COMPLETE
+
+Phase 4 will connect the Task Engine and Inventory Engine into this
+behaviour.
+
+----------------------------------------------------------------------
+10.2 TaskManager does not yet generate events
+----------------------------------------------------------------------
+
+Events.h defines event types, but the actual event-generation/queue/callback
+mechanism is not implemented yet.
+
+That belongs to a later phase.
+
+----------------------------------------------------------------------
+10.3 RFID hardware is not implemented
+----------------------------------------------------------------------
+
+There is currently no RC522 driver in the core.
+
+There is also no physical detection of:
+    - item entering
+    - item leaving
+    - RFID direction
+
+Future hardware work must map physical observations into logical calls
+such as:
+
+    itemAdded(tagID)
+    itemRemoved(tagID)
+    itemScanned(tagID)
+
+----------------------------------------------------------------------
+10.4 Unknown RFID workflow is incomplete
+----------------------------------------------------------------------
+
+The architecture defines the desired behaviour, but the actual UI-driven
+"add new item" workflow is future work.
+
+Example future flow:
+
+    unknown RFID
+        ->
+    EVENT_UNKNOWN_RFID
+        ->
+    user selects logical ItemType
+        ->
+    register tag
+        ->
+    inventory can recognise it in future
+
+----------------------------------------------------------------------
+10.5 Feedback/UI is not implemented
+----------------------------------------------------------------------
+
+No LCD, RGB LED, buzzer, audio, or physical button code exists in the
+software core yet.
+
+The core should not directly implement those hardware calls.
+
+----------------------------------------------------------------------
+10.6 Startup reconciliation is future work
+----------------------------------------------------------------------
+
+If physical inventory changes while the backpack is powered off, the
+software cannot yet automatically reconcile its stored state with reality.
+
+A future startup reconciliation mode may be needed.
+
+----------------------------------------------------------------------
+10.7 Inventory persistence is not implemented
+----------------------------------------------------------------------
+
+EEPROM/storage is future work.
+
+Current inventory exists only in program memory for the current run.
+
+----------------------------------------------------------------------
+10.8 Task persistence is not implemented
+----------------------------------------------------------------------
+
+The project requirement calls for at least three task configurations to
+eventually be retained in EEPROM.
+
+Current task definitions are compile/runtime data only.
+
+----------------------------------------------------------------------
+10.9 Formal automated testing is not implemented
+----------------------------------------------------------------------
+
+The current manual test functions are suitable for early development.
+
+A formal test framework is not currently necessary, but could be added
+later if the system becomes large enough to justify it.
+
+----------------------------------------------------------------------
+10.10 Serial debug console is not implemented
+----------------------------------------------------------------------
+
+A future debug/simulation console can provide commands such as:
+
+    1 - Start University
+    2 - Start Gym
+    3 - Scan Wallet
+    4 - Scan Keys
+    5 - Scan Phone
+    6 - Scan Unknown RFID
+    7 - Stop Task
+    8 - Print Inventory
+    9 - Print State
+
+This will make integrated software testing much easier before hardware
+integration.
+
+======================================================================
+11. RFID / PHYSICAL DESIGN NOTES FOR LATER
+======================================================================
+
+V1 is expected to use an RC522 because it is available from the Arduino
+kit and helps control cost.
+
+The main physical challenge is not simply reading an RFID tag. It is
+determining direction:
+
+    entering backpack
+    versus
+    leaving backpack
+
+Potential approaches previously identified:
+
+    OPTION A:
+        One RC522 + explicit IN/OUT mode
+        Simple and inexpensive.
+
+    OPTION B:
+        Two RC522 readers + sequence detection
+        A -> B = entering
+        B -> A = leaving
+        Potential RF interference concerns.
+
+    OPTION C:
+        One RC522 + two IR beam sensors
+        RFID identifies the item.
+        IR sequence determines direction.
+
+Regardless of physical implementation, the software core should ultimately
+receive logical operations such as:
+
+    itemAdded(tagID)
+    itemRemoved(tagID)
+
+The RFID subsystem should not contain task logic.
+
+RFID testing should later consider:
+    - distance
+    - orientation
+    - tag speed
+    - repeated scans
+    - multiple tags
+    - false detections
+    - debounce/repeat protection
+
+The mechanical design should encourage controlled passage near the reader.
+
+======================================================================
+12. NEXT PHASE — PHASE 4 STATE MACHINE
+======================================================================
+
+NEXT MAJOR DEVELOPMENT STEP:
+
+    Build the Backpack Core / finite state machine.
+
+The intended high-level behaviour is:
+
+    IDLE
+      |
+      | startTask()
+      v
+    CHECKING_INVENTORY
+      |
+      +-- all required items present --> TASK_REMINDER
+      |
+      +-- missing items --------------> ACQUIRING_ITEMS
+                                            |
+                                            | item acquired
+                                            v
+                                      check next requirement
+                                            |
+                                            +--> more missing
+                                            |
+                                            +--> all present
+                                                   |
+                                                   v
+                                            TASK_REMINDER
+
+TASK_REMINDER continues until:
+
+    stopTask()
+
+or a new task is selected.
+
+The Phase 4 core should coordinate existing modules rather than replacing
+them.
+
+Likely future main coordinator:
+
+    Backpack
+
+with responsibilities such as:
+
+    begin()
+    startTask(TaskType)
+    stopTask()
+    itemScanned(uint32_t tagID)
+    itemAdded(uint32_t tagID)
+    itemRemoved(uint32_t tagID)
+
+and status queries such as:
+
+    getState()
+    getCurrentTask()
+    getCurrentRequiredItem()
+    isTaskActive()
+    isTaskComplete()
+
+Phase 4 should therefore become the first place where the separate
+Inventory and Task engines begin to behave like one backpack system.
+
+======================================================================
+13. FUTURE FILE STRUCTURE
+======================================================================
+
+Current / near-current:
+
+    backpack-core/
+    |
+    +-- src/
+    |   +-- main.cpp
+    |   +-- Inventory.cpp
+    |   +-- TaskManager.cpp
+    |
+    +-- include/
+    |   +-- Config.h
+    |   +-- Item.h
+    |   +-- Task.h
+    |   +-- Events.h
+    |   +-- Inventory.h
+    |   +-- TaskManager.h
+    |
+    +-- tests/
+    +-- build/
+    +-- CMakeLists.txt
+    +-- README.md
+    +-- .gitignore
+
+Future core files expected:
+
+    Backpack.h
+    Backpack.cpp
+
+Future hardware files:
+
+    RFID.h
+    RFID.cpp
+
+    Buttons.h
+    Buttons.cpp
+
+    Display.h
+    Display.cpp
+
+    Audio.h
+    Audio.cpp
+
+    Feedback.h
+    Feedback.cpp
+
+The exact final structure can evolve as implementation progresses.
+
+======================================================================
+14. CURRENT GIT CHECKPOINT
+======================================================================
+
+Phase 1:
+    Implemented
+    Tested
+    Committed / pushed
+
+Phase 2:
+    Implemented
+    Tested
+    Maximum capacity tested
+    getItemCount() added by user
+    Tested
+    Committed / pushed
+
+Phase 3:
+    Currently being implemented
+
+Before moving to Phase 4:
+
+    - Finish TaskManager implementation
+    - Finish task_test()
+    - Test all important edge cases
+    - Compile cleanly
+    - Run executable successfully
+    - Review code
+    - Commit Phase 3 to Git
+    - Push to GitHub
+
+Suggested commit message:
+
+    Implement V1 task engine
+
+======================================================================
+15. HOW TO CONTINUE IF CHAT HISTORY IS LOST
+======================================================================
+
+Start by reading this development log.
+
+Then inspect the current repository.
+
+Expected position:
+
+    Phase 1 — COMPLETE
+    Phase 2 — COMPLETE
+    Phase 3 — Task Engine — COMPLETE or near-complete
+    Phase 4 — State Machine — NEXT
+
+Do NOT restart the project from scratch.
+
+First verify:
+
+    CMake works
+    Ninja works
+    g++ works
+    CMake can configure
+    CMake can build
+    backpack.exe runs
+
+Then inspect:
+
+    include/
+    src/
+    CMakeLists.txt
+    .gitignore
+    README.md
+
+Confirm the current TaskManager implementation and tests.
+
+The architectural priorities remain:
+
+    hardware-independent core
+    one active task
+    Inventory uses physical RFID identity
+    TaskManager uses logical ItemType
+    state machine coordinates the modules
+    events separate core logic from hardware
+    fixed-size data structures where practical
+
+Continue using the learning workflow:
+
+    responsibility
+        ->
+    header/interface
+        ->
+    implementation
+        ->
+    compile
+        ->
+    test
+        ->
+    Git commit
+        ->
+    next module
+
+======================================================================
+16. DEVELOPMENT PHILOSOPHY / LEARNING GOALS
+======================================================================
+
+The purpose of this implementation is not just to produce working
+firmware.
+
+The user is intentionally learning C++ and embedded software architecture
+while building the project.
+
+Therefore future development should:
+
+    - Explain why a module exists before writing it.
+    - Explain interfaces before implementations.
+    - Build one logical piece at a time.
+    - Compile frequently.
+    - Test edge cases.
+    - Encourage the user to make small modifications independently.
+    - Review user-written changes rather than replacing them unnecessarily.
+    - Keep the code simple enough to understand and debug.
+    - Preserve hardware independence.
+    - Avoid unnecessary abstraction for V1.
+    - Introduce more advanced C++ concepts only when they solve an actual
+      project problem.
+
+A successful development step is not merely:
+
+    "The code compiles."
+
+It is:
+
+    "The code compiles, the behaviour is tested, and the developer
+     understands why the code is structured this way."
+
+======================================================================
+END OF DEVELOPMENT SAVE POINT
+======================================================================
