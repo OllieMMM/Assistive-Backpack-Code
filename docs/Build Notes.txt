@@ -1,3 +1,12 @@
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+Build Notes journal
+By Oliver McKinlay
+
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+Phase 1 - Getting a working data model
+
+09/09
 Just generated the first header files
 Now will compile and test the item class and structs to validate.
 Refer to step 3 - Compile and test Item.h in ChaptGPT logs.
@@ -35,3 +44,16 @@ We now have wokring:
     Arrays of items and tasks
     Fixed width integers to save space using #include <cstdint>
     Header files with all relavent information that can be passed between builds and .cpp files
+
+
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+Phase 2 - Implamenting the Inventory Manager
+This is basically a mini database:
+
+RFID       Type          Location
+--------------------------------------
+0x1234     Wallet        Outside
+0x5678     Keys          Backpack
+0xABCD     Phone         Outside
+
+It has associated functions to query the inventory for specific items or status.
