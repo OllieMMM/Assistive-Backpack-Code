@@ -12,6 +12,7 @@ add_executable(backpack
     firmware/backpack-core/src/TaskManager.cpp
 )
 
-target_include_directories(backpack PRIVATE
-    ${CMAKE_CURRENT_SOURCE_DIR}/include
+target_include_directories(backpack
+    PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/firmware/backpack-core/include
 )

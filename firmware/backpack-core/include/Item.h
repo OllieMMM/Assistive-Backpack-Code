@@ -1,3 +1,10 @@
+// Item.h
+// This header file defines the structure and types for items in the Backpack 
+// Core project.
+// Defines what types of items exist, Where an itm can be located and what 
+// information describes on physical item.
+
+
 #pragma once
 
 #include <cstdint>

@@ -1,3 +1,9 @@
 Just generated the first header files
 Now will compile and test the item class and structs to validate.
 Refer to step 3 - Compile and test Item.h in ChaptGPT logs.
+
+19/09
+Done step 3, the compilation was successful and an item was created. 
+There was an issue with the compilation and the header files, because CMake
+doesn't have explicit access to the files/folder paths I had to update the CMakelists.txt 
+to hvae target_include_directories. Likely becuase of the current file layout, but it works.

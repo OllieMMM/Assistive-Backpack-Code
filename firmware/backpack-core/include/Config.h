@@ -1,5 +1,8 @@
+// Config.h
+// This header file contains configuration settings for the Backpack Core project.
+
 #pragma once
 
-#include <cstdint>
+#include <cstdint> // Allows us to use the uint8_t data type, which is an unsigned 8-bit integer.
 
-constexpr uint8_t MAX_TASK_ITEMS = 10;
+constexpr uint8_t MAX_TASK_ITEMS = 10; // Defines the maximum number of task items that can be stored.
