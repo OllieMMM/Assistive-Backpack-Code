@@ -7,3 +7,21 @@ Done step 3, the compilation was successful and an item was created.
 There was an issue with the compilation and the header files, because CMake
 doesn't have explicit access to the files/folder paths I had to update the CMakelists.txt 
 to hvae target_include_directories. Likely becuase of the current file layout, but it works.
+
+Step 7 also now implamented and tested.
+The task creation system works as expected for this preliminary test. Currently enum class
+only returns integers, the variable names are just nice to work with essentially.
+Can implament a function toString() later that prints the correct item to the console
+Like this:
+        std::string toString(ItemType item)
+        {
+            switch (item)
+            {
+                case ItemType::Wallet: return "Wallet";
+                case ItemType::Keys: return "Keys";
+                case ItemType::Phone: return "Phone";
+                case ItemType::Laptop: return "Laptop";
+                case ItemType::Charger: return "Charger";
+                default: return "Unknown";
+            }
+        }

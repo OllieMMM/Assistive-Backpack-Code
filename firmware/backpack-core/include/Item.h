@@ -13,9 +13,9 @@
 enum class ItemType
 {
     Wallet,
-    Keys,
+    Laptop, 
     Phone,
-    Laptop,
+    Keys,
     Charger,
     WaterBottle
 };
