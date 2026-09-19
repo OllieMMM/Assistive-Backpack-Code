@@ -8,11 +8,11 @@
 int main()
 {
     // Create a physical item
-    Item wallet;
+    Item phone;
 
-    wallet.tagID = 0x1234;
-    wallet.type = ItemType::Wallet;
-    wallet.location = Location::Backpack;
+    phone.tagID = 0x1242;
+    phone.type = ItemType::Phone;
+    phone.location = Location::Unknown;
 
     // Create a task
     Task universityTask;
@@ -33,13 +33,13 @@ int main()
     BackpackEvent event;
 
     event.type = EventType::ItemAcquired;
-    event.item = ItemType::Wallet;
+    event.item = ItemType::Phone;
     event.task = TaskType::University;
 
     std::cout << "=== Backpack Data Model Test ===" << std::endl;
 
-    std::cout << "Wallet RFID: 0x"
-              << std::hex << wallet.tagID << std::endl;
+    std::cout << "Phone RFID: 0x"
+              << std::hex << phone.tagID << std::endl;
 
     std::cout << std::dec;
 

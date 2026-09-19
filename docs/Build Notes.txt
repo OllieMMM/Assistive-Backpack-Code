@@ -25,3 +25,13 @@ Like this:
                 default: return "Unknown";
             }
         }
+
+Phase 1 Finshed:
+Working prototype with custom data types for items, tasks and events.
+The data can be changed without affecting the structure of the underlying code.
+We now have wokring: 
+    enum class ItemType
+    struct Item contains all the relavent information about an Item
+    Arrays of items and tasks
+    Fixed width integers to save space using #include <cstdint>
+    Header files with all relavent information that can be passed between builds and .cpp files
