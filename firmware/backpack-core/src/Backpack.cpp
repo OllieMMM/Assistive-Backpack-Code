@@ -112,6 +112,8 @@ void Backpack::itemAdded(uint32_t tagID)
 void Backpack::itemRemoved(uint32_t tagID)
 {
     inventory.removeItem(tagID);
+    // NOTE: Add a checkInvetory function if the backpack should return to 
+    // item aquisition if one is removed during a complete task.
 }
 // +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 

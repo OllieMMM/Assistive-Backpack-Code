@@ -371,13 +371,10 @@ int main_backpack_test()
     
     backpack.itemAdded(0x0001);
 
+    std::cout << "Next required item: " << std::endl;
+    std::cout << static_cast<int>(backpack.getCurrentRequiredItem()) << std::endl;
+
     std::cout << "State after adding Wallet: "
-          << stateToString(backpack.getState())
-          << '\n';
-
-    backpack.itemAdded(0x0002);
-
-    std::cout << "State after adding Keys: "
           << stateToString(backpack.getState())
           << '\n';
 
@@ -392,7 +389,71 @@ int main_backpack_test()
     
     std::cout << "Invenotry after adding items above: " << std::endl;
     inventory.printInventory();
-    
+
+    // Next test is to try to start another task while a first is running.
+    // Init a new task:
+    Task gym;
+
+    gym.type = TaskType::Gym;
+    gym.requiredItems[0] = ItemType::Wallet;
+    gym.requiredItems[1] = ItemType::Keys;
+    gym.requiredItems[2] = ItemType::Phone;
+    gym.requiredItems[3] = ItemType::WaterBottle;
+    gym.itemCount = 4;
+
+    // register the task
+    backpack.registerTask(gym);
+
+    std::cout << "Task University started: "
+          << (started ? "YES" : "NO")
+          << '\n';
+
+    std::cout << "State: "
+          << stateToString(backpack.getState())
+          << '\n';
+
+    started = backpack.startTask(TaskType::Gym);
+
+    // try to start task B gym
+    std::cout << "Task 'Gym' started: "
+          << (started ? "YES" : "NO")
+          << '\n';
+
+    std::cout << "State after Task B attempt: "
+          << stateToString(backpack.getState())
+          << '\n';
+
+    backpack.startTask(TaskType::Gym);
+
+    std::cout << "Current backpack task: " << std::endl;
+    std::cout << static_cast<int>(backpack.getCurrentTask()) << std::endl;
+
+    // esting stop Task
+    backpack.stopTask();
+
+    std::cout << "State after stopTask: "
+          << stateToString(backpack.getState())
+          << '\n';
+
+    // Now start task B -> Gym
+    bool startedAgain = backpack.startTask(TaskType::Gym);
+
+    std::cout << "Task restarted: "
+              << (startedAgain ? "YES" : "NO")
+              << '\n';
+
+    std::cout << "State after restart: "
+              << stateToString(backpack.getState())
+              << '\n';
+
+    inventory.printInventory();
+
+    backpack.itemAdded(0x0002);
+
+    std::cout << "Next required item: " << std::endl;
+    std::cout << static_cast<int>(backpack.getCurrentRequiredItem()) << std::endl;
+
+
     return 0;
 }
 
