@@ -1,3 +1,6 @@
+// This file currently houses all of the main system tests and features 
+// implamented to try and catch errors and check performance.
+
 #include <iostream>
 
 #include "Config.h"
@@ -453,6 +456,26 @@ int main_backpack_test()
     std::cout << "Next required item: " << std::endl;
     std::cout << static_cast<int>(backpack.getCurrentRequiredItem()) << std::endl;
 
+    backpack.stopTask();
+
+    // Testing a start task with all items required already in backpack.
+    backpack.startTask(TaskType::University);
+    std::cout << "State after resetting to Univeristy: "
+              << stateToString(backpack.getState())
+              << '\n';
+
+    backpack.stopTask();
+
+    // Add a secondary wallet
+    inventory.registerItem(0x0005, ItemType::Wallet);
+
+    // Adding and removing items
+    // backpack.itemAdded(0x0005);
+
+    backpack.itemRemoved(0x0001);
+    backpack.itemRemoved(0x0003);
+
+    inventory.printInventory();
 
     return 0;
 }

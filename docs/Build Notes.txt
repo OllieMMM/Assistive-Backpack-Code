@@ -161,3 +161,21 @@ Combining this into the FSM we have:
                          ┌─────────┐
                          │  IDLE   │
                          └─────────┘
+
+Tested the backpack manager.
+Notes: Had to add a encapsulation function to register tasks with the taskmanger
+of the backpack beacuse its a private variable.
+addedItem also updates the inventory regardless of the current state that the 
+backpack is in.
+Can upadte the inventory speratley but this does not update the FSM necessarily
+Slightly convoluted layers but behaves well and can all be run from one program 
+with functions once set up.
+Item registration works well but task registration still requires the user to 
+define and upload the task in software.
+
+Tested against the following 6 cases
+ 1 - Start a second task while first is running
+ 2 - Stop a task during acquisition
+ 3 - Stop during reminder
+ 4 - Addition of an irrelavent item
+ 5 - Removing an item (System not yet decided on reseting task acquisiton)

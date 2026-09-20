@@ -154,6 +154,10 @@ void Inventory::printInventory() const
                   << static_cast<int>(items[i].type)
                   << std::endl;
 
+        std::cout << "Location: "
+                  << static_cast<int>(items[i].location)
+                  << std::endl;
+
         std::cout << std::endl;
     }
 
