@@ -79,3 +79,85 @@ Current states include:
     CHECKING_INVENTORY
     ACQUIRING_ITEMS
     TASK_REMINDER
+
+
+20/09 
+Continued work on phase 4.
+Have now implamented the following flow chart using FSM
+
+                 startTask()
+                     │
+                     ▼
+                   IDLE
+                     │
+                     ▼
+             TaskManager starts
+                  the task
+                     │
+                     ▼
+           CHECKING_INVENTORY
+                     │
+                     ▼
+             checkInventory()
+                /          \
+               /            \
+          complete?          no
+             /                \
+            ▼                  ▼
+    TASK_REMINDER       ACQUIRING_ITEMS
+
+
+Item tracking flow in the backpack subsystem of phase 4
+
+             RFID subsystem
+                    │
+                    │ scan
+                    ▼
+            itemScanned(tag)
+                    │
+                    │ determine context
+             ┌──────┴──────┐
+             ▼             ▼
+        itemAdded()   itemRemoved()
+             │             │
+             ▼             ▼
+        Inventory     Inventory
+
+Combining this into the FSM we have:
+
+                         startTask()
+                              │
+                              ▼
+                         ┌─────────┐
+                         │ CHECKING│
+                         │INVENTORY│
+                         └────┬────┘
+                              │
+                    checkInventory()
+                         /         \
+                        /           \
+               complete             missing
+                  │                    │
+                  ▼                    ▼
+          ┌──────────────┐      ┌──────────────┐
+          │TASK_REMINDER │      │  ACQUIRING   │
+          └──────┬───────┘      │    ITEMS     │
+                 │              └──────┬───────┘
+                 │                     │
+                 │ stopTask()          │ itemAdded()
+                 │                     │
+                 │                     ▼
+                 │              task complete?
+                 │                  /     \
+                 │                YES      NO
+                 │                 │        │
+                 │                 ▼        │
+                 │          TASK_REMINDER   │
+                 │                          │
+                 └──────────────────────────┘
+                              │
+                              │ stopTask()
+                              ▼
+                         ┌─────────┐
+                         │  IDLE   │
+                         └─────────┘

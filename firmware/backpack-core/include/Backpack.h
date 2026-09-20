@@ -26,14 +26,15 @@ public:
 
     explicit Backpack(Inventory& inventory);
 
-    void begin();
+    void begin(); 
 
     BackpackState getState() const;
     
+    bool registerTask(const Task& task);
     bool startTask(TaskType type);
     void stopTask();
 
-    void itemScanned(uint32_t tagID);
+    void itemScanned(uint32_t tagID); 
     void itemAdded(uint32_t tagID);
     void itemRemoved(uint32_t tagID);
 

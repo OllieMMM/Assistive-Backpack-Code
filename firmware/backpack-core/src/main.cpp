@@ -5,6 +5,9 @@
 #include "Events.h"
 #include "Inventory.h"
 #include "TaskManager.h"
+#include "Backpack.h"
+
+const char* stateToString(BackpackState state);
 
 // Phase 1 Test code for Data Model
 int main_data_test()
@@ -81,6 +84,12 @@ int main_inventory_test()
 
     inventory.addItem(0x1234);
     inventory.addItem(0x5678);
+
+    // add item that hasnt been registered:
+    // Should return false
+    std::cout << "\n Adding an unregistered item:"
+              << inventory.addItem(0x0001)
+              << std::endl;
 
     // Check inventory.
     std::cout << "\nInventory status:" << std::endl;
@@ -288,12 +297,133 @@ int main_task_engine()
     return 0;
 }
 
+int main_backpack_test()
+{
+    std::cout << "======== BACKPACK TEST ========" << std::endl;
+
+    Inventory inventory;
+    Backpack backpack(inventory);
+
+    backpack.begin();
+
+    std::cout << "Initial state: "
+              << stateToString(backpack.getState())
+              << '\n';
+
+    Item phone;
+
+    phone.tagID = 0x1234;
+    phone.type = ItemType::Phone;
+    phone.location = Location::Unknown;
+
+    inventory.registerItem(0x1234, ItemType::Phone);
+    inventory.addItem(0x1234);
+
+    // This tests if an item can be added to the inventory without the backpack
+    // active.
+    inventory.printInventory();
+
+    std::cout << "Initial state: "
+              << stateToString(backpack.getState())
+              << '\n';
+
+    // Try to start a task before it is registered?
+    // Does not work but currently we don't have a way to register tasks!
+    // The taskmanager is a private class of the TaskManager.
+    bool started = backpack.startTask(TaskType::University);
+
+    std::cout << "Task started: "
+          << (started ? "YES" : "NO")
+          << '\n';
+
+    std::cout << "State after startTask: "
+          << stateToString(backpack.getState())
+          << '\n';
+    
+    // Initialize a univeristy task with required items and register it with the task manager.
+    Task university;
+
+    university.type = TaskType::University;
+
+    university.requiredItems[0] = ItemType::Wallet;
+    university.requiredItems[1] = ItemType::Keys;
+    university.requiredItems[2] = ItemType::Phone;
+    university.requiredItems[3] = ItemType::Laptop;
+
+    university.itemCount = 4;
+
+    // register the task and try again 
+    backpack.registerTask(university);
+    started = backpack.startTask(TaskType::University);
+
+    std::cout << "Task started after registry: "
+          << (started ? "YES" : "NO")
+          << '\n';
+
+    std::cout << "State after startTask: "
+          << stateToString(backpack.getState())
+          << '\n';
+
+    // Initialize all of the univeristy items with tags.
+    inventory.registerItem(0x0001, ItemType::Wallet);
+    inventory.registerItem(0x0002, ItemType::Keys);
+    inventory.registerItem(0x0003, ItemType::Laptop);
+    
+    backpack.itemAdded(0x0001);
+
+    std::cout << "State after adding Wallet: "
+          << stateToString(backpack.getState())
+          << '\n';
+
+    backpack.itemAdded(0x0002);
+
+    std::cout << "State after adding Keys: "
+          << stateToString(backpack.getState())
+          << '\n';
+
+    // Note that the items can be added via inventory.addItem but this does 
+    // not trigger the checkInventory and FSM transitions! Do not use
+    backpack.itemAdded(0x0003);
+
+    std::cout << "State after adding Laptop: "
+          << stateToString(backpack.getState())
+          << '\n';
+
+    
+    std::cout << "Invenotry after adding items above: " << std::endl;
+    inventory.printInventory();
+    
+    return 0;
+}
+
 int main()
 {
     // Uncomment the desired test to run.
+    // main_data_test();
+    // main_inventory_test();
+    // main_task_engine();
+    main_backpack_test();
 
-    // return main_data_test();
-    // return main_inventory_test();
-    return main_task_engine();
+    return 0;
+}
 
+// State readibility helper function
+const char* stateToString(BackpackState state)
+{
+    switch (state)
+    {
+        case BackpackState::IDLE:
+            return "IDLE";
+
+        case BackpackState::CHECKING_INVENTORY:
+            return "CHECKING_INVENTORY";
+
+        case BackpackState::ACQUIRING_ITEMS:
+            return "ACQUIRING_ITEMS";
+
+        case BackpackState::TASK_REMINDER:
+            return "TASK_REMINDER";
+    }
+
+    return "UNKNOWN";
 }
