@@ -219,13 +219,22 @@ void Backpack::itemScanned(uint32_t tagID)
     // RFID/input subsystem integration point.
     // A scan does not automatically mean the item was added.
     // Calls either itemAdded or itemRemoved or perhaps also itemRegister.
-    BackpackEvent event{};
+    ItemType type = inventory.getItemType(tagID);
 
-    event.type = EventType::UnknownRFID;
-    event.item = ItemType::Unknown;
-    event.task = taskManager.getCurrentTask();
+    if (type == ItemType::Unknown)
+    {
+        BackpackEvent event{};
 
-    eventGenerator.emit(event);
+        event.type = EventType::UnknownRFID;
+        event.item = ItemType::Unknown;
+        event.task = taskManager.getCurrentTask();
+
+        eventGenerator.emit(event);
+
+        return;
+    }
+
+    // Known tag.
 }
 // +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 

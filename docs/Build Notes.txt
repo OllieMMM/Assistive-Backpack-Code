@@ -80,7 +80,7 @@ Current states include:
     ACQUIRING_ITEMS
     TASK_REMINDER
 
-
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 20/09 
 Continued work on phase 4.
 Have now implamented the following flow chart using FSM
@@ -189,6 +189,7 @@ PHASE 6 — RFID Simulation        ⬜
 PHASE 7 — Debug Console          ⬜
 PHASE 8 — Hardware Integration   ⬜
 
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 21/09
 Begin work on phase 5 
 
@@ -241,3 +242,32 @@ PHASE 6 — RFID / Input Layer     🟡 NEXT
 * Event infrastructure is complete,
   but some Backpack behaviours still
   need their final event/logic handling.
+
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+PHASE 6 Begins:
+
+Item processing sequence needed for Phase 6 
+  RFID detects Laptop
+        ↓
+ITEM SCANNED
+        ↓
+Is tag known?
+    /       \
+  YES       NO
+   |         |
+   ▼         ▼
+known      UNKNOWN_RFID
+item
+   |
+   ▼
+Was it actually added?
+   |
+   ▼
+ITEM ADDED
+   |
+   ▼
+Is it required?
+   |
+   ├── YES → ITEM_ACQUIRED
+   │
+   └── NO  → ITEM_NOT_REQUIRED

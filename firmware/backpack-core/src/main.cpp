@@ -595,6 +595,70 @@ int main_event_generator_test()
     return 0;
 }
 
+// Phase 6 RFID Simulation test harness
+int main_rfid_simulation_test()
+{
+    Inventory inventory;
+    Backpack backpack(inventory);
+
+    backpack.begin();
+
+    std::cout << "\n===== RFID SIMULATION TEST =====\n";
+
+    uint32_t knownTag = 0x12345678;
+    uint32_t unknownTag = 0x87654321;
+
+    // Register the knwon tag.
+    inventory.registerItem(knownTag, ItemType::Keys);
+    
+    backpack.itemScanned(knownTag);
+
+    while (backpack.hasEvent())
+    {
+        printEvent(backpack.getEvent());
+    }
+
+    backpack.itemScanned(unknownTag);
+
+    while (backpack.hasEvent())
+    {
+        printEvent(backpack.getEvent());
+    }
+
+    Task gym;
+
+    gym.type = TaskType::Gym;
+    gym.requiredItems[0] = ItemType::Wallet;
+    gym.requiredItems[1] = ItemType::Keys;
+    gym.requiredItems[2] = ItemType::Phone;
+    gym.requiredItems[3] = ItemType::WaterBottle;
+
+    gym.itemCount = 4;
+
+    // register the task
+    backpack.registerTask(gym);
+
+    backpack.startTask(TaskType::Gym);
+
+    // Now with a started task the item can be added
+    backpack.itemAdded(knownTag);
+
+    while (backpack.hasEvent())
+    {
+        printEvent(backpack.getEvent());
+    }
+
+    backpack.itemAdded(unknownTag);
+
+    while (backpack.hasEvent())
+    {
+        printEvent(backpack.getEvent());
+    }
+
+
+    return 0;
+}
+
 int main()
 {
     // Uncomment the desired test to run.
@@ -602,7 +666,8 @@ int main()
     // main_inventory_test();
     // main_task_engine();
     // main_backpack_test();
-    main_event_generator_test();
+    // main_event_generator_test();
+    main_rfid_simulation_test();
 
     return 0;
 }
