@@ -179,3 +179,65 @@ Tested against the following 6 cases
  3 - Stop during reminder
  4 - Addition of an irrelavent item
  5 - Removing an item (System not yet decided on reseting task acquisiton)
+
+PHASE 1 — Data Model             ✅ COMPLETE
+PHASE 2 — Inventory Engine       ✅ COMPLETE
+PHASE 3 — Task Engine            ✅ COMPLETE
+PHASE 4 — Backpack FSM           ✅ COMPLETE
+PHASE 5 — Event System           🟡 STARTING NOW
+PHASE 6 — RFID Simulation        ⬜
+PHASE 7 — Debug Console          ⬜
+PHASE 8 — Hardware Integration   ⬜
+
+21/09
+Begin work on phase 5 
+
+                 BACKPACK CORE
+                      │
+                      │
+              EVENT_ITEM_REQUIRED 🟡 STARTING NOW
+                      │
+                      ▼
+              ┌───────────────┐
+              │ Feedback/UI   │
+              └───────┬───────┘
+                      │
+             ┌────────┼────────┐
+             ▼        ▼        ▼
+            LCD      LED     Audio
+
+EventGenerator doesn't decide what happened. It stores/transmits the information 
+that something happened.
+
+Implamented the code as provided by ChatGPT
+
+Developed a custom isItemRequired function, imaplemtned in the taskManger class 
+header file. Wrote the following function in its TaskManger.cpp file
+
+and then also provided a handle to this function for the backpack class under 
+the same name.
+This function was particularly helpful when checking between itemadded and 
+itemAquired in the event differnentiation. of itemAdded function in bakcpack.cpp
+Note that acquired = needed for task, and added = simply now in backpack
+
+I added the test cases into a new function in cpp main to run and debug the 
+code.
+The queue FIFO approach is working for multiple event handles
+Not all of the backpack functions have yet been giving proper event generation 
+handles that trigger when called. But the necessary ones have been, though they 
+currently lack some of the logic that is still required for a fully functioning 
+backpack model V1. Such as the itemScanned function, currently has no logic for 
+what to do with different scans.
+
+I have saved and uplodade this version of phase 5 to git.
+
+PHASE 1 — Data Model             ✅ COMPLETE
+PHASE 2 — Inventory Engine       ✅ COMPLETE
+PHASE 3 — Task Engine            ✅ COMPLETE
+PHASE 4 — Backpack FSM           ✅ COMPLETE
+PHASE 5 — Event System           ✅ COMPLETE*
+PHASE 6 — RFID / Input Layer     🟡 NEXT
+
+* Event infrastructure is complete,
+  but some Backpack behaviours still
+  need their final event/logic handling.

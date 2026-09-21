@@ -8,6 +8,7 @@
 
 #include "Inventory.h"
 #include "TaskManager.h"
+#include "EventGenerator.h"
 
 // Backpack states
 enum class BackpackState
@@ -18,8 +19,10 @@ enum class BackpackState
     TASK_REMINDER
 };
 
-// Backpack class manages the overall state of the backpack, including inventory and tasks.
-// It interacts with the Inventory and TaskManager classes to handle item scanning, adding, and removing, as well as task management.
+// Backpack class manages the overall state of the backpack, including inventory 
+// and tasks.
+// It interacts with the Inventory and TaskManager and EventGenerator classes 
+// to handle item scanning, adding, and removing, as well as task management.
 class Backpack
 {
 public:
@@ -39,10 +42,15 @@ public:
     void itemRemoved(uint32_t tagID);
 
     TaskType getCurrentTask() const;
-    ItemType getCurrentRequiredItem() const;
+    ItemType getNextRequiredItem() const;
 
     bool isTaskActive() const;
     bool isTaskComplete() const;
+    bool isItemRequired(ItemType type) const;
+
+    bool hasEvent() const;
+    BackpackEvent getEvent();
+    void clearEvents();
 
 private:
 
@@ -51,6 +59,8 @@ private:
 
     Inventory& inventory;
     TaskManager taskManager;
+    EventGenerator eventGenerator;
 
     BackpackState state = BackpackState::IDLE;
 };
+

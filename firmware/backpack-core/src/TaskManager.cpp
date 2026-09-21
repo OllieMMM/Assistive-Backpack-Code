@@ -157,3 +157,32 @@ bool TaskManager::isTaskActive() const
 {
     return taskActive;
 }
+// +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+// Checks if an item type is required by a current task
+// Returns true if item required, false otherwise
+bool TaskManager::isItemRequired(ItemType type) const
+{
+    if (!taskActive)
+    {
+        return false;
+    }
+
+    const Task* task = findTask(activeTask);
+
+    if (task == nullptr)
+    {
+        return false;
+    }
+
+    for (uint8_t i = 0; i < task->itemCount; i++)
+    {
+        if(task->requiredItems[i] == type)
+        {
+            return true;
+        }
+    }
+
+    return false;
+}
+// +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++

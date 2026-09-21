@@ -32,6 +32,8 @@ public:
 
     bool isTaskActive() const;
 
+    bool isItemRequired(ItemType type) const;
+
 private:
 
     Inventory& inventory;

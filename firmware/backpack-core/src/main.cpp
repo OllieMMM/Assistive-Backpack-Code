@@ -9,8 +9,10 @@
 #include "Inventory.h"
 #include "TaskManager.h"
 #include "Backpack.h"
+#include "EventGenerator.h"
 
 const char* stateToString(BackpackState state);
+void printEvent(const BackpackEvent& event);
 
 // Phase 1 Test code for Data Model
 int main_data_test()
@@ -193,6 +195,8 @@ int main_task_engine()
 
     bool started = taskManager.startTask(TaskType::University);
 
+
+
     std::cout << "Task started: "
               << started
               << std::endl;
@@ -342,6 +346,7 @@ int main_backpack_test()
     std::cout << "State after startTask: "
           << stateToString(backpack.getState())
           << '\n';
+
     
     // Initialize a univeristy task with required items and register it with the task manager.
     Task university;
@@ -375,7 +380,7 @@ int main_backpack_test()
     backpack.itemAdded(0x0001);
 
     std::cout << "Next required item: " << std::endl;
-    std::cout << static_cast<int>(backpack.getCurrentRequiredItem()) << std::endl;
+    std::cout << static_cast<int>(backpack.getNextRequiredItem()) << std::endl;
 
     std::cout << "State after adding Wallet: "
           << stateToString(backpack.getState())
@@ -454,7 +459,7 @@ int main_backpack_test()
     backpack.itemAdded(0x0002);
 
     std::cout << "Next required item: " << std::endl;
-    std::cout << static_cast<int>(backpack.getCurrentRequiredItem()) << std::endl;
+    std::cout << static_cast<int>(backpack.getNextRequiredItem()) << std::endl;
 
     backpack.stopTask();
 
@@ -480,13 +485,124 @@ int main_backpack_test()
     return 0;
 }
 
+int main_event_generator_test()
+{
+    // Test the event generator class induviduully
+    EventGenerator generator;
+
+    std::cout << "\n===== EVENT GENERATOR TEST =====\n";
+
+    std::cout << "Initially has event: "
+              << generator.hasEvent() << '\n';
+
+    BackpackEvent event;
+
+    event.type = EventType::ItemAcquired;
+    event.item = ItemType::Phone;
+    event.task = TaskType::University;
+
+    generator.emit(event);
+
+    std::cout << "After emit: "
+              << generator.hasEvent() << '\n';
+
+    BackpackEvent received = generator.getEvent();
+
+    std::cout << "Event received.\n";
+
+    generator.clear();
+
+    std::cout << "After clear: "
+              << generator.hasEvent() << '\n';
+
+    // GENERATE A BACKPACK CLASS AND SEE THE EVENT GENERATOR BEHAVIOUR
+    std::cout << "\n===== BACKPACK EVENT TEST =====\n";
+    Inventory inventory;
+    Backpack backpack(inventory);
+
+    backpack.begin();
+
+    Task gym;
+
+    gym.type = TaskType::Gym;
+    gym.requiredItems[0] = ItemType::Wallet;
+    gym.requiredItems[1] = ItemType::Keys;
+    gym.requiredItems[2] = ItemType::Phone;
+    gym.requiredItems[3] = ItemType::WaterBottle;
+
+    gym.itemCount = 4;
+
+    // register the task
+    backpack.registerTask(gym);
+
+    backpack.startTask(TaskType::Gym);
+
+    std::cout <<"Events triggered: " << std::endl;
+    while(backpack.hasEvent())
+    {
+        printEvent(backpack.getEvent());
+    }
+    std::cout << "" << std::endl;
+
+    inventory.registerItem(0x0001, ItemType::Wallet);
+    inventory.registerItem(0x0002, ItemType::Phone);
+    inventory.registerItem(0x0003, ItemType::Keys);
+    inventory.registerItem(0x0004, ItemType::WaterBottle);
+    inventory.registerItem(0x0005, ItemType::Laptop);
+
+    backpack.itemAdded(0x0001);
+
+    std::cout <<"Events triggered: " << std::endl;
+    while(backpack.hasEvent())
+    {
+        printEvent(backpack.getEvent());
+    }
+    std::cout << "" << std::endl;
+
+    backpack.itemAdded(0x0005);
+    
+    std::cout <<"Events triggered: " << std::endl;
+    while(backpack.hasEvent())
+    {
+        printEvent(backpack.getEvent());
+    }
+    std::cout << "" << std::endl;
+
+    backpack.itemAdded(0x2);
+    backpack.itemAdded(0x3);
+    backpack.itemRemoved(0x4);
+
+    std::cout <<"Events triggered: " << std::endl;
+    while(backpack.hasEvent())
+    {
+        printEvent(backpack.getEvent());
+    }
+    std::cout << "" << std::endl;
+
+    backpack.itemScanned(0x0015);
+    backpack.itemAdded(0x4);
+    backpack.itemAdded(0x15);
+
+    backpack.stopTask();
+
+    std::cout <<"Events triggered: " << std::endl;
+    while(backpack.hasEvent())
+    {
+        printEvent(backpack.getEvent());
+    }
+    std::cout << "" << std::endl;
+
+    return 0;
+}
+
 int main()
 {
     // Uncomment the desired test to run.
     // main_data_test();
     // main_inventory_test();
     // main_task_engine();
-    main_backpack_test();
+    // main_backpack_test();
+    main_event_generator_test();
 
     return 0;
 }
@@ -511,3 +627,50 @@ const char* stateToString(BackpackState state)
 
     return "UNKNOWN";
 }
+
+// Helper funcion for event readibility
+const char* eventTypeToString(EventType type)
+{
+    switch (type)
+    {
+        case EventType::TaskStarted:
+            return "TASK_STARTED";
+
+        case EventType::TaskStopped:
+            return "TASK_STOPPED";
+
+        case EventType::TaskComplete:
+            return "TASK_COMPLETE";
+
+        case EventType::ItemRequired:
+            return "ITEM_REQUIRED";
+
+        case EventType::ItemAcquired:
+            return "ITEM_ACQUIRED";
+
+        case EventType::ItemNotRequired:
+            return "ITEM_NOT_REQUIRED";
+
+        case EventType::UnknownRFID:
+            return "UNKNOWN_RFID";
+
+        case EventType::ItemAdded:
+            return "ITEM_ADDED";
+
+        case EventType::ItemRemoved:
+            return "ITEM_REMOVED";
+
+        case EventType::TaskReminder:
+            return "TASK_REMINDER";
+    }
+
+    return "UNKNOWN";
+}
+
+void printEvent(const BackpackEvent& event)
+{     
+    std::cout << "Event: "
+              << eventTypeToString(event.type)
+              << '\n';
+}   
+

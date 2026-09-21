@@ -12,15 +12,16 @@
 
 enum class EventType
 {
+    Unknown,
     TaskStarted,
     TaskStopped,
     TaskComplete,
     ItemRequired,
-    ItemAcquired,
+    ItemAcquired, // Specific to the task
     ItemAlreadyPresent,
     ItemNotRequired,
     UnknownRFID,
-    ItemAdded,
+    ItemAdded, // Added to backpack 
     ItemRemoved,
     TaskReminder
 };
