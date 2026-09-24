@@ -271,3 +271,30 @@ Is it required?
    ├── YES → ITEM_ACQUIRED
    │
    └── NO  → ITEM_NOT_REQUIRED
+
+PHASE 6 — RFID / INPUT SIMULATION COMPLETE
+
+Implemented and tested RFID tag scanning through Backpack::itemScanned().
+
+Known RFID tags can be identified through the Inventory system.
+Unknown RFID tags generate UNKNOWN_RFID events.
+
+Known items can be added through Backpack::itemAdded() and correctly
+interact with the active TaskManager/FSM. Required items generate
+ITEM_ACQUIRED and update Inventory.
+
+Unknown items can also be added to Inventory. They are represented
+using ItemType::Unknown and currently generate ITEM_NOT_REQUIRED when
+a task is active because they do not correspond to a task requirement.
+
+RFID scanning itself does not automatically mean an item was added
+or removed. The current implementation deliberately keeps scanning,
+adding, and removing as separate operations.
+
+Current limitation:
+Known RFID scans do not yet generate their own event or automatically
+trigger an add/remove operation. Physical direction detection and
+the unknown-item registration workflow are not yet implemented.
+
+Phase 6 test function added to main.cpp and current implementation
+committed to Git.
