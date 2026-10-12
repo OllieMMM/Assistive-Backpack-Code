@@ -11,6 +11,7 @@ add_executable(backpack
     firmware/backpack-core/src/Inventory.cpp
     firmware/backpack-core/src/TaskManager.cpp
     firmware/backpack-core/src/EventGenerator.cpp
+    firmware/backpack-core/src/DebugConsole.cpp
 )
 
 target_include_directories(backpack
