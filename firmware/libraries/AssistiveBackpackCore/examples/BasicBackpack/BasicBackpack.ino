@@ -1,3 +1,9 @@
+// Assitive Backpack Code
+// This file implaments a custom inventory and event management system
+// to work with the Assitive Backpack for our ESI 2026 project.
+// More information https://github.com/OllieMMM/Assistive-Backpack-Code
+// Written by Oliver McKinlay
+
 #include <Backpack.h>
 
 void setup()
@@ -12,7 +18,7 @@ void setup()
 
     backpack.begin();
 
-    Serial.println("Backpack core begin() called.");
+    Serial.println("Backpack succesfully started");
 }
 
 void loop()
