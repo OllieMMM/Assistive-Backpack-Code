@@ -143,73 +143,160 @@ void Backpack::checkInventory()
 // Add item to the Backpack's inventory when it is scanned.
 // This function should be called when an item is scanned into the backpack.
 // Takes in the tagID (e.g. RFID Tag = 0x1234) 
+
 void Backpack::itemAdded(uint32_t tagID)
 {
-    // Inventory updates regardless of backpack state.
-    // (ie. user can add waterbottle without having to start a task.)
-    inventory.addItem(tagID);
+    // Check whether this tag is already registered.
+    Item* item = inventory.findItem(tagID);
 
-    ItemType itemType = inventory.getItemType(tagID);
-
-    if (state == BackpackState::ACQUIRING_ITEMS)
+    // An unregistered tag can still be tracked as an unknown item.
+    if (item == nullptr)
     {
-        if (!taskManager.isItemRequired(itemType))
+        // An unregistered tag needs a new inventory slot.
+        // If the inventory is full, stop without reporting
+        // the tag as an unknown RFID.
+        if (inventory.getItemCount() >= MAX_ITEMS)
         {
             BackpackEvent event{};
-        
-            event.type = EventType::ItemNotRequired;
-            event.item = itemType;
+            event.type = EventType::InventoryFull;
+            event.item = ItemType::Unknown;
             event.task = taskManager.getCurrentTask();
-        
             eventGenerator.emit(event);
+            return;
+        }
+
+        if (!inventory.registerItem(tagID, ItemType::Unknown))
+        {
+            BackpackEvent event{};
+            event.type = EventType::UnknownRFID;
+            event.item = ItemType::Unknown;
+            event.task = taskManager.getCurrentTask();
+            eventGenerator.emit(event);
+            return;
+        }
+    }
+
+    // Retrieve the item's type after registration.
+    ItemType itemType = inventory.getItemType(tagID);
+
+    // Update the inventory before generating a normal item event.
+    if (!inventory.addItem(tagID))
+    {
+        BackpackEvent event{};
+        event.type = EventType::UnknownRFID;
+        event.item = ItemType::Unknown;
+        event.task = taskManager.getCurrentTask();
+
+        eventGenerator.emit(event);
+        return;
+    }
+
+    // Unknown items are tracked, but do not participate in task logic.
+    if (itemType == ItemType::Unknown)
+    {
+        BackpackEvent event{};
+        event.type = EventType::UnknownRFID;
+        event.item = ItemType::Unknown;
+        event.task = taskManager.getCurrentTask();
+
+        eventGenerator.emit(event);
+        return;
+    }
+
+    // Handle recognised items while acquiring task items.
+    if (state == BackpackState::ACQUIRING_ITEMS)
+    {
+        BackpackEvent event{};
+
+        if (!taskManager.isItemRequired(itemType))
+        {
+            event.type = EventType::ItemNotRequired;
         }
         else
         {
-
-        BackpackEvent event{};
-        
-        event.type = EventType::ItemAcquired;
-        event.item = itemType;
-        event.task = taskManager.getCurrentTask();
-    
-        eventGenerator.emit(event);
+            event.type = EventType::ItemAcquired;
         }
 
-        // Transition only if the task is complete and a task is running.
+        event.item = itemType;
+        event.task = taskManager.getCurrentTask();
+        eventGenerator.emit(event);
+
+        // Recheck progress after the inventory update.
         checkInventory();
     }
-    else 
+    else
     {
-    // Item added but no tasks are active so simply add to backpack
+        // A recognised item was added outside the acquisition state.
+        BackpackEvent event{};
+        event.type = EventType::ItemAdded;
+        event.item = itemType;
+        event.task = taskManager.getCurrentTask();
+
+        eventGenerator.emit(event);
+    }
+}
+
+// +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+// Remove item from the backpack (sets this item location flag = outside)
+
+void Backpack::itemRemoved(uint32_t tagID)
+{
+    // Find the tag before attempting to remove it.
+    Item* item = inventory.findItem(tagID);
+
+    // A tag that is not registered cannot be removed from inventory.
+    if (item == nullptr)
+    {
+        BackpackEvent event{};
+        event.type = EventType::UnknownRFID;
+        event.item = ItemType::Unknown;
+        event.task = taskManager.getCurrentTask();
+
+        eventGenerator.emit(event);
+        return;
+    }
+
+    // Save the type before updating the item's location.
+    ItemType itemType = item->type;
+
+    // An unidentified item is tracked, but has no normal item event.
+    if (itemType == ItemType::Unknown)
+    {
+        if (inventory.removeItem(tagID))
+        {
+            BackpackEvent event{};
+            event.type = EventType::UnknownRFID;
+            event.item = ItemType::Unknown;
+            event.task = taskManager.getCurrentTask();
+
+            eventGenerator.emit(event);
+        }
+
+        return;
+    }
+
+    // Only generate ItemRemoved if the inventory operation succeeds.
+    if (!inventory.removeItem(tagID))
+    {
+        return;
+    }
+
     BackpackEvent event{};
-        
-    event.type = EventType::ItemAdded;
+    event.type = EventType::ItemRemoved;
     event.item = itemType;
     event.task = taskManager.getCurrentTask();
 
     eventGenerator.emit(event);
-    }
-}
-// +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-// Remove item from the backpack (sets this item location flag = outside)
-void Backpack::itemRemoved(uint32_t tagID)
-{   
-    // Cannot remove an item that isn't in backpack
-    if(inventory.removeItem(tagID))
+    // Recheck the task only if the removed item is relevant to it.
+    if (state != BackpackState::IDLE &&
+        taskManager.isItemRequired(itemType))
     {
-        ItemType itemType = inventory.getItemType(tagID);
-        // NOTE: Add a checkInvetory function if the backpack should return to 
-        // item aquisition if one is removed during a complete task.
-        BackpackEvent event{};
-
-        event.type = EventType::ItemRemoved;
-        event.item = itemType;
-        event.task = taskManager.getCurrentTask();
-
-        eventGenerator.emit(event);
+        checkInventory();
     }
 }
+
 // +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 // Picks up that an item was scanned but not necessarily placed into/out of the 

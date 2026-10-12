@@ -23,7 +23,8 @@ enum class EventType
     UnknownRFID,
     ItemAdded, // Added to backpack 
     ItemRemoved,
-    TaskReminder
+    TaskReminder,
+    InventoryFull
 };
 
 struct BackpackEvent
