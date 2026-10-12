@@ -1,0 +1,364 @@
+ASSISTIVE BACKPACK PROJECT — SOFTWARE DEVELOPMENT SAVE POINT ESI 2026 |
+V1 CORE | AFTER PHASE 6 Date: 12 October 2026
+
+PURPOSE
+
+This document records the state of the Assistive Backpack V1 software
+after Phases 4–6. It extends the previous development log:
+“Assistive_Backpack_Software_Development_Log_Save_Point(1).txt”, which
+describes Phases 1–3 and the original architecture. Save this file
+alongside the earlier notes in the project Sources/knowledge area.
+
+Use this document to resume development without relying on chat history.
+The current GitHub repository is the authoritative source for exact
+code. Where this note says “intended” or “reported”, verify the current
+source before changing implementation details.
+
+PROJECT GOAL AND DEVELOPMENT APPROACH
+
+Build and validate the backpack’s logical “brain” as ordinary C++
+software before connecting hardware. Keep core logic independent of
+Arduino pins, RFID libraries, LCDs, LEDs, buzzers, audio players, and
+button hardware.
+
+The core coordinates: - Item/tag definitions and inventory - Task
+definitions and requirements - The backpack finite-state machine (FSM) -
+Logical event generation for later UI/feedback consumers
+
+The hardware/input layer should call core functions. The feedback/UI
+layer should consume logical events. Do not place calls such as
+digitalWrite(), lcd.print(), RFID reader operations, or audio-player
+calls inside the core.
+
+Development workflow: responsibility -> header/interface ->
+implementation -> compile -> test -> review -> Git commit/push -> next
+module
+
+The user prefers educational, stepwise explanations with meaningful
+batches of related steps, compile/test checkpoints, and enough
+explanation to understand and maintain the code independently.
+
+ENVIRONMENT AND REPOSITORY
+
+Development environment: - Windows + VS Code - MSYS2 UCRT64 toolchain -
+g++, CMake, Ninja, CMake Tools - Git/GitHub - Project root:
+firmware/backpack-core, under the user’s OneDrive university project
+directory
+
+The VS Code PowerShell terminal recognises cmake, ninja, and g++. The
+desktop CMake build and test executable were working before this save
+point. The current build directory is build/; it is ignored by
+.gitignore. CMakePresets.json and .vscode/ were intentionally
+removed/deferred. Do not reintroduce them unless useful. Existing README
+and docs are retained.
+
+IMPORTANT DESIGN DECISIONS
+
+1.  Hardware independence: the software core must run on desktop and
+    later compile for the target Arduino environment without depending
+    on hardware APIs.
+2.  RFID tag ID identifies a physical tagged object; ItemType is the
+    logical category. Tasks require ItemType values, not RFID IDs.
+3.  One active task at a time in V1.
+4.  Inventory is the single source of truth. TaskManager receives an
+    Inventory reference rather than maintaining a duplicate inventory.
+5.  Inventory operations and task definitions remain separate.
+6.  A scan is not automatically an add/remove. One RFID reading cannot
+    by itself reliably determine whether an item entered or left the
+    bag. Direction detection belongs in the future input/hardware layer;
+    it should call itemAdded(tagID) or itemRemoved(tagID) once it has
+    determined intent.
+7.  The core generates logical events. UI/feedback modules will
+    interpret them.
+8.  Fixed-size arrays and explicit counts are preferred for predictable
+    memory use on an Arduino-class target.
+9.  Prefer non-blocking timing (for example millis()-style scheduling)
+    for future reminder/feedback behaviour instead of long delay()
+    calls.
+
+PHASE ROADMAP / STATUS
+
+Phase 1 — Data model: COMPLETE, tested, committed/pushed. Phase 2 —
+Inventory engine: COMPLETE, tested, committed/pushed. Phase 3 — Task
+engine: COMPLETE, tested, committed/pushed. Phase 4 — Backpack
+coordinator / FSM: COMPLETE, tested, committed/pushed. Phase 5 — Event
+queue: COMPLETE, tests 1–7 passed, committed/pushed. Phase 6 — RFID scan
+simulation/integration hook: IMPLEMENTED and committed/ pushed; see
+current behaviour and limitations below. Phase 7 — Interactive debug
+console / full software simulation: NEXT. Phase 8 — Arduino toolchain,
+custom library packaging and hardware integration. Phase 9 — End-to-end
+integration, validation, cleanup and final test pass (confirm the exact
+planned scope with the team before starting).
+
+PHASE 4 — BACKPACK COORDINATOR AND FINITE-STATE MACHINE
+
+The Backpack class coordinates Inventory and TaskManager. It owns a
+TaskManager constructed with a reference to the existing Inventory. The
+Backpack exposes a public registerTask(const Task&) forwarding method so
+callers can register tasks without exposing its private TaskManager.
+
+Main states: - IDLE - CHECKING_INVENTORY - ACQUIRING_ITEMS -
+TASK_REMINDER
+
+Expected flow: IDLE -> startTask() -> CHECKING_INVENTORY ->
+ACQUIRING_ITEMS, if any required items are missing -> TASK_REMINDER,
+once all requirements are present
+
+If all requirements are already in inventory, checking can proceed
+directly to TASK_REMINDER. TASK_REMINDER persists until stopTask() or
+the task is otherwise ended. V1 does not need a separate TASK_COMPLETE
+state.
+
+Key functions include: - begin() - registerTask(const Task&) -
+startTask(TaskType) - stopTask() - itemScanned(uint32_t tagID) -
+itemAdded(uint32_t tagID) - itemRemoved(uint32_t tagID) - getState(),
+getCurrentTask(), getCurrentRequiredItem() - isTaskActive(),
+isTaskComplete()
+
+Important behavioural details: - Backpack::startTask() rejects attempts
+unless the Backpack state is IDLE. - TaskManager::startTask() also has a
+defensive guard that rejects starting when taskActive is already true. -
+checkInventory() reuses TaskManager::isTaskComplete() to choose between
+TASK_REMINDER and ACQUIRING_ITEMS rather than duplicating completion
+logic. - itemAdded(tagID) updates Inventory. If the Backpack is
+currently in ACQUIRING_ITEMS, it rechecks inventory and can move to
+TASK_REMINDER. - Calling inventory.addItem() directly changes inventory
+but does not trigger Backpack FSM behaviour. Use backpack.itemAdded()
+when the logical operation should also notify/update the Backpack
+coordinator. - itemRemoved(tagID) updates inventory. Confirm whether
+removal during an active task should also trigger a state recheck/event;
+test this in later integration work rather than assuming it is already
+handled. - isTaskActive() has been implemented using the Backpack state;
+inspect the current code if state/task-manager activity ever appears
+inconsistent.
+
+PHASE 5 — EVENT SYSTEM
+
+An EventGenerator was added and then changed from a single-last-event
+holder to a fixed-size FIFO queue, because a single operation may
+generate multiple events. The queue uses a configured maximum
+(MAX_EVENTS in Config.h; check the current value in source).
+
+The queue concept: - emit(event) adds to the queue and reports
+success/failure - hasEvent() checks whether queued events exist -
+getEvent() returns/removes the oldest event - clear() clears queued
+events
+
+Backpack exposes queue accessors: - hasEvent() - getEvent() -
+clearEvents()
+
+The exact EventType names/fields are defined in the repository’s
+Events.h. Events discussed/used across the implementation include: -
+TASK_STARTED - TASK_STOPPED - ITEM_REQUIRED - ITEM_ACQUIRED -
+ITEM_NOT_REQUIRED - UNKNOWN_RFID - TASK_COMPLETE - TASK_REMINDER -
+ITEM_ADDED - ITEM_REMOVED, if present in the current enum
+
+Do not assume every listed event is emitted by every relevant function
+yet. Inspect Events.h and Backpack.cpp before adding new event
+behaviour. Phase 5 manual tests 1–7 passed. Queue maximum-capacity
+overflow was not tested. If emit() fails because the queue is full,
+consider how the caller should handle/report the dropped event during a
+later robustness pass.
+
+TaskManager also gained: bool isItemRequired(ItemType type) const;
+
+It returns false when no task is active or the active task cannot be
+found; otherwise it checks the active task’s requiredItems array.
+Backpack exposes the corresponding query. This helps distinguish an item
+required for the active task from an unrelated item.
+
+PHASE 6 — RFID SCAN SIMULATION / INTEGRATION HOOK
+
+Phase 6 added/updated Backpack::itemScanned(uint32_t tagID) to
+distinguish registered and unregistered RFID tags. The user’s current
+reported behaviour is:
+
+-   Registered/known tag scanned: currently no event/action is emitted
+    by the scan itself.
+-   Unregistered/unknown tag scanned: emits UNKNOWN_RFID.
+-   During an active task, adding a known item that is required for the
+    task updates inventory and emits ITEM_ACQUIRED.
+-   During an active task, scanning an unknown tag currently adds an
+    ItemType::Unknown entry to inventory, emits ITEM_NOT_REQUIRED, and
+    returns to normal operation.
+-   Unknown tags can be stored with no assigned logical item type.
+-   The user has tested both known and unknown tag scans/additions.
+
+CAUTION: the exact behaviour above is a report of the latest testing,
+not a guarantee that all scan/add/remove flows are conceptually final.
+In particular, scan, registration, inventory addition, and direction
+detection are separate operations. Review the actual implementation
+before refactoring. A future console should make those distinctions
+explicit to prevent a scan from silently meaning “item entered the bag”.
+
+Potential conceptual distinction: - RFID scan: reader detected tag ID. -
+UNKNOWN_RFID: tag ID is not registered/mapped. - ITEM_ADDED: item is now
+represented in inventory. - ITEM_ACQUIRED: item was added and satisfies
+a requirement for the active task. - ITEM_NOT_REQUIRED: scanned/added
+item is not a requirement for the active task, according to the
+implemented event semantics. Ensure the final event semantics are
+documented and consistent before hardware integration.
+
+ARDUINO COMPATIBILITY ISSUE TO TRACK
+
+A teammate reported that #include <cstdint> (the user initially wrote
+“cintsdt”) was unavailable in their Arduino environment while testing
+the Phase 6 implementation.
+
+Record this as an UNRESOLVED COMPATIBILITY REPORT, not yet a confirmed
+defect: <cstdint> is a standard C++ header, but availability can depend
+on the selected board core, compiler/toolchain, and how the code is
+being compiled. Do not blindly replace it before reproducing the error.
+
+During Phase 8: 1. Record the exact board model, Arduino IDE/CLI
+version, selected board core and version, compiler error text, and the
+file/line that fails. 2. Confirm whether the failing code is compiled as
+C++ and whether the selected toolchain provides the standard header. 3.
+Check whether the Arduino library is being built through the intended
+Arduino library layout/build system rather than compiling a
+header/source in isolation. 4. If the environment genuinely does not
+support <cstdint>, choose a consistent, target-compatible integer type
+strategy (for example, the platform’s supported fixed-width integer
+header/types) and update all affected files together. Avoid mixing
+incompatible declarations. 5. Rebuild both the desktop CMake version and
+the Arduino version after any change so portability regressions are
+caught. 6. Keep the core hardware-independent; do not add
+Arduino-specific includes to general core headers just to work around
+one compile error.
+
+PHASE 7 — DEBUG CONSOLE / FULL SOFTWARE SIMULATION (NEXT)
+
+Purpose: operate and validate the complete core without editing main.cpp
+for each test and without needing physical hardware.
+
+Proposed console capabilities: - Display current FSM state and active
+task. - Display registered inventory and logical item types. - Display
+task requirements and next missing item. - Start a registered task; stop
+the active task. - Simulate scanning a known RFID tag and an unknown
+RFID tag. - Explicitly add or remove an item, keeping scan separate from
+direction. - Register an item/tag mapping where supported by the current
+data model. - Display and drain queued events in FIFO order. - Exit
+cleanly.
+
+Possible command menu: 1. Scan RFID 2. Add item to inventory 3. Remove
+item from inventory 4. Start task 5. Stop task 6. Show inventory 7. Show
+state/task 8. Show queued events 9. Register item/tag 0. Exit
+
+Implementation guidance: - First inspect current main.cpp and module
+APIs; do not duplicate existing functionality or assume names that
+differ from the repository. - Keep console parsing/output in a separate
+DebugConsole module if that fits the existing structure; avoid putting
+all presentation logic in Backpack. - Console should call public core
+APIs and consume events through hasEvent()/getEvent(). - Test a full
+journey: register tasks and tag mappings; start with some required items
+missing; scan a known tag; explicitly add it; check state and events;
+add remaining required items; confirm TASK_REMINDER; stop task; confirm
+IDLE. - Test invalid menu input, unknown tags, duplicate item adds,
+missing removes, task start while active, unknown/unregistered tasks,
+full inventory, and event queue draining. Record expected versus actual
+behaviour. - Keep the desktop build working throughout.
+
+PHASE 8 — ARDUINO LIBRARY SETUP AND HARDWARE INTEGRATION
+
+The next objective after simulation is to package/reuse the software
+core in an Arduino environment and integrate hardware incrementally.
+
+Likely work sequence: 1. Confirm target board (the team has discussed an
+Arduino Uno-class target; confirm exact model before choosing a library
+layout or pin plan). 2. Resolve and document the <cstdint> report above.
+3. Establish a valid Arduino library layout or other clean shared-core
+layout. Decide which files are public headers, implementation sources,
+examples, and hardware-specific adapters. Keep desktop-only test harness
+code out of the Arduino library’s normal build. 4. Create a minimal
+Arduino compile/example that includes the core and calls begin() before
+attaching any hardware. 5. Compile with no peripherals connected. 6. Add
+one hardware subsystem at a time, starting with the agreed RFID reader
+and then buttons/feedback/display/audio as the hardware plan requires.
+7. Convert hardware detections into logical core calls/events. The core
+should not directly read RC522 hardware. 8. Ensure timing is
+non-blocking where practical and account for memory limits. 9. Test on
+the actual target board and record memory/build output. 10. Re-run
+desktop tests after changes to shared core files.
+
+Physical RFID caution: A single RC522 scan does not intrinsically
+identify entry versus exit. Possible approaches previously discussed are
+a deliberate IN/OUT mode, two readers with sequence detection (possible
+RF interference), or one reader plus two IR beam sensors for direction.
+Decide based on mechanical design, budget, and team testing. Keep that
+decision outside the core API.
+
+PHASE 9 — END-TO-END INTEGRATION / VALIDATION
+
+Treat Phase 9 as the final integration and robustness pass; confirm
+scope with the team’s current plan. Suggested checklist: - Desktop
+simulation scenarios pass. - Arduino build succeeds with the chosen
+board/core/toolchain. - Known and unknown tag flows are consistent. -
+Inventory changes and FSM transitions stay synchronised. - Event
+ordering, queue overflow behaviour, and event meanings are documented. -
+Starting/stopping tasks and missing-item progression behave correctly. -
+Repeated RFID reads and duplicate adds/removes are handled
+deliberately. - No unsupported dynamic-memory assumptions or blocking
+delays have slipped into the embedded core. - Feedback/UI code consumes
+events without taking ownership of task logic. - README and developer
+notes describe build, test, library installation, and hardware
+configuration. - Final changes are compiled, tested, committed, and
+pushed to GitHub.
+
+CURRENT FILES / MODULES TO EXPECT
+
+The previous save point documents the Phase 1–3 files. By the end of
+Phase 6, the project is expected to include these modules (confirm
+actual paths/names against the repository before editing):
+
+    include/
+        Config.h
+        Item.h
+        Task.h
+        Events.h
+        Inventory.h
+        TaskManager.h
+        Backpack.h
+        EventGenerator.h
+
+    src/
+        main.cpp
+        Inventory.cpp
+        TaskManager.cpp
+        Backpack.cpp
+        EventGenerator.cpp
+
+There may also be tests/, docs/, README.md, CMakeLists.txt, and
+.gitignore. Exact file placement may vary; the list is a guide, not a
+substitute for checking the current repository.
+
+GIT / SAVE-POINT STATUS
+
+The user reports that Phases 1–6 have been committed and pushed to
+GitHub, including the Phase 6 test function in main.cpp and itemScanned
+implementation. The current repository should be inspected before
+continuing so the next work starts from the committed state.
+
+Suggested checkpoint sequence: - Commit Phase 7 console separately after
+tests pass. - Commit Phase 8 library/build integration separately from
+each major hardware subsystem where practical. - Commit Phase 9
+integration fixes and final validation separately. Use descriptive
+commit messages and keep the working tree clean at each save point.
+
+HOW TO RESUME
+
+1.  Read this file and the earlier Phase 1–3 development log.
+2.  Inspect the current Git branch/status and project tree.
+3.  Read Events.h, Config.h, Backpack.h/.cpp, EventGenerator.h/.cpp,
+    Inventory.h/.cpp, TaskManager.h/.cpp, and main.cpp before relying on
+    any assumed API or event semantics.
+4.  Start Phase 7 with a brief architecture plan and implementation
+    order.
+5.  Add the console in logical chunks, then compile and run a complete
+    simulation before beginning Arduino packaging.
+6.  During Phase 8, reproduce and investigate the <cstdint> report using
+    the exact Arduino board/core/toolchain; record the actual compiler
+    output.
+7.  Keep the core independent from hardware and verify both desktop and
+    Arduino builds after shared-code changes.
+
+END OF SAVE POINT
