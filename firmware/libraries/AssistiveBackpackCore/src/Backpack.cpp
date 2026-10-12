@@ -5,7 +5,6 @@
 // Inventory Class, TaskManager Class and eventGenerator Class.
 
 #include "Backpack.h"
-#include <iostream>
 // +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 // Backpack constructor initializes the Backpack with a reference to an Inventory 

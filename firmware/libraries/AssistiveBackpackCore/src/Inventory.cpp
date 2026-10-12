@@ -1,8 +1,6 @@
 // Inventory.cpp
 // This source file implements the functionality of the Inventory Manager.
 
-#include <iostream>
-
 #include "Inventory.h"
 // +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -35,6 +33,19 @@ Item* Inventory::findItem(uint32_t tagID)
     }
 
     return nullptr;
+}
+// +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+// Retrieves an item from the inventory by its index.
+// If the index is valid, returns a pointer to the item; else, returns nullptr.
+Item* Inventory::getItemAt(uint8_t index)
+{
+    if (index >= itemCount)
+    {
+        return nullptr;
+    }
+
+    return &items[index];
 }
 // +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -130,39 +141,5 @@ ItemType Inventory::getItemType(uint32_t tagID) const
     }
 
     return ItemType::Unknown;
-}
-// +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-// Prints the current inventory to the console for debugging purposes.
-void Inventory::printInventory() const
-{
-    std::cout << "===== INVENTORY =====" << std::endl;
-
-    for (uint8_t i = 0; i < itemCount; i++)
-    {
-        std::cout << "Tag: 0x"
-                  << std::hex
-                  << items[i].tagID
-                  << std::dec
-                  << std::endl;
-
-        std::cout << "Item index: "
-                  << static_cast<int>(i)
-                  << std::endl;
-        
-        std::cout << "Type: "
-                  << static_cast<int>(items[i].type)
-                  << std::endl;
-
-        std::cout << "Location: "
-                  << static_cast<int>(items[i].location)
-                  << std::endl;
-
-        std::cout << std::endl;
-    }
-
-    std::cout << "Total items: "
-              << static_cast<int>(itemCount)
-              << std::endl;
 }
 // +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++

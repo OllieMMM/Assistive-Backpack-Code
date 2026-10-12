@@ -7,7 +7,7 @@
 
 #pragma once
 
-#include <cstdint>
+#include <stdint.h>
 
 // Enum creates a new data type. Can now write, ItemType item = ItemType::Phone.
 enum class ItemType

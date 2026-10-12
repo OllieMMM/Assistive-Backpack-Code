@@ -4,7 +4,7 @@
 
 #pragma once
 
-#include <cstdint>
+#include <stdint.h>
 
 #include "Inventory.h"
 #include "TaskManager.h"

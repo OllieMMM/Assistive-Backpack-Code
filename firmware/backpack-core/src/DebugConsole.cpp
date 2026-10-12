@@ -32,6 +32,17 @@ namespace
         return "Invalid item";
     }
 
+    const char* locationName(Location location)
+    {
+        switch (location)
+        {
+        case Location::Unknown:  return "Unknown";
+        case Location::Outside:  return "Outside";
+        case Location::Backpack: return "Backpack";
+        }
+        return "Invalid location";
+    }
+
     const char* taskName(TaskType type)
     {
         switch (type)
@@ -396,9 +407,46 @@ void DebugConsole::run()
             }
             break;
 
+        
         case 6:
-            inventory.printInventory();
-            break;
+        {
+            std::cout << "===== INVENTORY =====" << std::endl;
+        
+            for (uint8_t i = 0; i < inventory.getItemCount(); i++)
+            {
+                const Item* item = inventory.getItemAt(i);
+            
+                if (item == nullptr)
+                {
+                    continue;
+                }
+            
+                std::cout << "Tag: 0x"
+                          << std::hex << item->tagID
+                          << std::dec << std::endl;
+            
+                std::cout << "Item index: "
+                          << static_cast<int>(i)
+                          << std::endl;
+            
+                std::cout << "Type: "
+                          << itemName(item->type)
+                          << std::endl;
+            
+                std::cout << "Location: "
+                          << locationName(item->location)
+                          << std::endl;
+            
+                std::cout << std::endl;
+            }
+
+    std::cout << "Total items: "
+              << static_cast<int>(inventory.getItemCount())
+              << std::endl;
+
+    break;
+}
+
 
         case 7:
             printStatus();

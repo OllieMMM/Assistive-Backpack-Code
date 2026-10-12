@@ -5,7 +5,7 @@
 
 #pragma once
 
-#include <cstdint>
+#include <stdint.h>
 
 #include "Config.h"
 #include "Item.h"
@@ -18,6 +18,8 @@ public:
     void clearInventory();
 
     uint8_t getItemCount() const; // Returns the current number of items in the inventory.
+
+    Item* getItemAt(uint8_t index);
     
     Item* findItem(uint32_t tagID);
     
@@ -30,8 +32,6 @@ public:
     bool hasItem(ItemType type) const; //The const keyword indicates that this function does not modify the state of the object.
 
     ItemType getItemType(uint32_t tagID) const;
-
-    void printInventory() const;
 
 private:
     // Accessable only from within the class, internal data and methods.
