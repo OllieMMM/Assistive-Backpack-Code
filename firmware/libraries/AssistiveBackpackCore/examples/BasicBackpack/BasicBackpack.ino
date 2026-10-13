@@ -39,7 +39,6 @@
 void setup()
 {
     Serial.begin(9600);
-
     Serial.println("Assistive Backpack - Core Library Test");
 
     // One inventory shared by the backpack and task manager.
@@ -50,10 +49,54 @@ void setup()
     backpack.begin();
     Serial.println("Backpack core begin() called.");
     
-    // Initialize and run the debug console
+    // Register demo RFID tags.
+    // These are example hexadecimal IDs.
+    inventory.registerItem(0x1001, ItemType::Wallet);
+    inventory.registerItem(0x1002, ItemType::Keys);
+    inventory.registerItem(0x1003, ItemType::Phone);
+    inventory.registerItem(0x1004, ItemType::Laptop);
+    inventory.registerItem(0x1005, ItemType::Charger);
+    inventory.registerItem(0x1006, ItemType::WaterBottle);
+
+    // University task: laptop, phone and keys.
+    Task university{};
+    university.type = TaskType::University;
+    university.requiredItems[0] = ItemType::Laptop;
+    university.requiredItems[1] = ItemType::Phone;
+    university.requiredItems[2] = ItemType::Keys;
+    university.itemCount = 3;
+    university.reminderAudio = 1;
+
+    // Gym task: keys, phone and water bottle.
+    Task gym{};
+    gym.type = TaskType::Gym;
+    gym.requiredItems[0] = ItemType::Keys;
+    gym.requiredItems[1] = ItemType::Phone;
+    gym.requiredItems[2] = ItemType::WaterBottle;
+    gym.itemCount = 3;
+    gym.reminderAudio = 2;
+
+    // Work task: laptop, phone and charger.
+    Task work{};
+    work.type = TaskType::Work;
+    work.requiredItems[0] = ItemType::Laptop;
+    work.requiredItems[1] = ItemType::Phone;
+    work.requiredItems[2] = ItemType::Charger;
+    work.itemCount = 3;
+    work.reminderAudio = 3;
+
+    // Register tasks through Backpack's public interface.
+    backpack.registerTask(university);
+    backpack.registerTask(gym);
+    backpack.registerTask(work);
+
+    Serial.println("Demo environment initialized successfully.");
+    Serial.println("Registered tags: 0x1001 to 0x1006");
+    Serial.println("Registered tasks: University, Gym, Work");
+
+    // Begin the debug console, which will handle user input and output.
     DebugConsoleArduino console(backpack, inventory);
     console.begin(9600);
-   
 }
 
 
