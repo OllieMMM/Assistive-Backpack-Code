@@ -1,0 +1,433 @@
+ASSISTIVE BACKPACK PROJECT — ESI 2026
+PHASE 7 SAVE / DEVELOPMENT POINT
+Desktop Debug Console, Arduino Library Packaging, and Arduino Console Preparation
+
+Save point date: 13 October 2026
+Repository: https://github.com/OllieMMM/Assistive-Backpack-Code
+
+===============================================================================
+1. PURPOSE AND STATUS
+===============================================================================
+
+This document records the latest known project state so another developer can
+continue without reconstructing the decisions from chat history.
+
+The project has a hardware-independent C++ core for inventory, tasks, backpack
+state management, and events. A desktop debug console supports development and
+testing. The shared core has been packaged as an Arduino library and the
+BasicBackpack Arduino sketch has successfully compiled for an Arduino Uno.
+
+Arduino-specific debug-console files were generated in the preceding work.
+They are a starting point only and still need to be reconciled with the exact
+current core headers and compiled before being considered verified.
+
+PHASE-NUMBER NOTE:
+Earlier notes identify Phase 7 as the desktop DebugConsole implementation.
+Recent work continued into Arduino library packaging and compatibility
+(previously treated as Phase 8 work). This save point keeps the requested
+“Phase 7” label while recording the newer progress too.
+
+===============================================================================
+2. CONFIRMED WORKING
+===============================================================================
+
+- Desktop C++ project configured and built after CMake source paths were
+  changed to use the shared Arduino-library core implementation.
+- Desktop backpack executable ran.
+- Arduino IDE recognised AssistiveBackpackCore.
+- Arduino library folder is connected to the repository by a Windows directory
+  junction, so repository edits appear in the Arduino sketchbook library path.
+- BasicBackpack sketch compiled for Arduino Uno.
+- Reported Arduino compile:
+    Program storage: 1,560 bytes (4%) of 32,256 bytes
+    Global variables: 256 bytes (12%) of 2,048 bytes
+- Inventory printing was moved out of the shared Inventory class into the
+  desktop DebugConsole.
+- Desktop inventory output now displays readable item types and locations.
+- Arduino library continued to compile after the inventory display refactor.
+
+NOT YET VERIFIED:
+- DebugConsoleArduino.h/.cpp have not yet been compiled against the current
+  core headers.
+- Arduino debug-console command handlers must be checked against real method
+  signatures, enum values, and event structure fields.
+- RFID and feedback sketches developed by teammates have not yet been audited
+  or integrated.
+- End-to-end hardware integration has not begun.
+- Final target is Arduino Mega; current library compatibility check was Uno.
+
+===============================================================================
+3. ARCHITECTURE AND DESIGN DECISIONS
+===============================================================================
+
+3.1 Hardware-independent core
+The shared core should not depend on Arduino APIs or desktop console I/O.
+Avoid iostream, Serial, LCD drivers, RC522 drivers, and other hardware APIs in
+the shared core.
+
+The core owns:
+- Inventory data and inventory operations.
+- Task registration and task management.
+- Backpack state-machine coordination.
+- Event generation and queueing.
+
+Platform/application layers own:
+- Desktop: std::cout and terminal interaction in DebugConsole.
+- Arduino: Serial interaction in DebugConsoleArduino.
+- RFID adapter: RC522 setup and tag detection.
+- Feedback adapter: audio, LEDs, display, and related outputs.
+
+3.2 Single authoritative core source
+Shared core source is stored in:
+firmware/libraries/AssistiveBackpackCore/src/
+
+Desktop CMake compiles the shared implementation files from this location.
+Arduino IDE uses the same directory as an Arduino library. This avoids
+maintaining separate copies of the core implementation.
+
+Desktop-only files include:
+firmware/backpack-core/include/DebugConsole.h
+firmware/backpack-core/src/main.cpp
+firmware/backpack-core/src/DebugConsole.cpp
+
+3.3 Inventory display refactor
+Inventory previously contained:
+    void printInventory() const;
+and an implementation using std::cout and <iostream>. This prevented Arduino
+AVR compilation.
+
+Changes made:
+- Removed printInventory() declaration from Inventory.h.
+- Removed Inventory::printInventory() implementation from Inventory.cpp.
+- Removed <iostream> from Inventory.cpp if no longer required.
+- Added a public index accessor:
+
+    Item* Inventory::getItemAt(uint8_t index)
+
+  The function returns nullptr when index >= itemCount; otherwise it returns
+  &items[index].
+
+This permits display code to iterate via the public interface without exposing
+the private array. `findItem(uint32_t tagID)` searches by tag ID; it must not be
+used as an index lookup.
+
+The desktop DebugConsole now formats the inventory output. The user added or
+used these display helpers:
+- itemName(item->type), for readable item-type names.
+- locationName(item->location), mapping:
+    Location::Unknown  -> "Unknown"
+    Location::Outside  -> "Outside"
+    Location::Backpack -> "Backpack"
+  and returning "Invalid location" for an unexpected enum value.
+
+These are presentation helpers and should remain in the console layer rather
+than being reintroduced into Inventory.
+
+3.4 Fixed-width integer compatibility
+The Arduino compiler reported:
+    fatal error: cstdint: No such file or directory
+
+The affected headers were Backpack.h, Config.h, Inventory.h, Item.h, Task.h,
+and TaskManager.h. Their <cstdint> includes were changed to <stdint.h> for
+Arduino AVR compatibility. A separate leftover iostream include in a
+debugging section was subsequently removed, after which the basic Arduino
+sketch compiled.
+
+Always re-run both the desktop build and Arduino compile after changing shared
+headers.
+
+===============================================================================
+4. REPOSITORY / BUILD LAYOUT
+===============================================================================
+
+Known relevant layout:
+
+    CMakeLists.txt
+    firmware/
+      backpack-core/
+        include/
+          DebugConsole.h
+        src/
+          main.cpp
+          DebugConsole.cpp
+        tests/
+      libraries/
+        AssistiveBackpackCore/
+          library.properties
+          src/
+            Backpack.cpp
+            Backpack.h
+            Config.h
+            EventGenerator.cpp
+            EventGenerator.h
+            Events.h
+            Inventory.cpp
+            Inventory.h
+            Item.h
+            Task.h
+            TaskManager.cpp
+            TaskManager.h
+          examples/
+            BasicBackpack/
+              BasicBackpack.ino
+
+Verify the actual tree before editing; this is the latest known structure.
+
+The root CMakeLists.txt compiles shared core implementation files from
+firmware/libraries/AssistiveBackpackCore/src and desktop-only main.cpp and
+DebugConsole.cpp from firmware/backpack-core/src. Include paths include the
+shared library source directory and desktop include directory.
+
+Run from repository root in PowerShell:
+
+    cmake -S . -B build
+    cmake --build build
+    .\build\backpack.exe
+
+The project uses MSYS2 UCRT64 with CMake, Ninja, and g++. The build directory
+is ignored by Git. Duplicate core headers were removed from
+firmware/backpack-core/include, leaving the desktop DebugConsole.h there.
+
+Known library.properties contents:
+
+    name=AssistiveBackpackCore
+    version=1.0.0
+    author=Assistive Backpack ESI Team
+    maintainer=Assistive Backpack ESI Team
+    sentence=Hardware-independent task and inventory core for the Assistive Backpack.
+    paragraph=Provides inventory management, task coordination, and event handling for the Assistive Backpack project.
+    category=Other
+    architectures=*
+
+===============================================================================
+5. WINDOWS ARDUINO LIBRARY JUNCTION
+===============================================================================
+
+Arduino IDE library path:
+    %USERPROFILE%\Documents\Arduino\libraries\AssistiveBackpackCore
+
+It is a Windows directory junction to:
+    <repository>\firmware\libraries\AssistiveBackpackCore
+
+Previously used PowerShell variables:
+
+    $repoLibrary = "$env:USERPROFILE\OneDrive\Documents\University\2026\Semester 2\ESI\Assistive Backpack Code\firmware\libraries\AssistiveBackpackCore"
+    $arduinoLibrary = "$env:USERPROFILE\Documents\Arduino\libraries\AssistiveBackpackCore"
+
+Junction creation command:
+
+    New-Item -ItemType Junction -Path $arduinoLibrary -Target $repoLibrary
+
+A prior physical Arduino library copy was renamed to AssistiveBackpackCore_backup.
+The junction makes the repository library the tracked source of truth. The
+junction is local machine configuration and should not be committed to Git.
+Avoid editing the backup copy by mistake.
+
+If Arduino IDE does not detect edits, restart the IDE or verify the junction.
+
+===============================================================================
+6. CORE API AND BEHAVIOUR NOTES
+===============================================================================
+
+This section summarises known behaviour. Inspect the actual current source
+before relying on exact signatures not explicitly listed.
+
+Inventory:
+- clearInventory(): clears inventory contents.
+- getItemCount(): returns current item count.
+- findItem(uint32_t tagID): searches by tag ID; returns Item* or nullptr.
+- getItemAt(uint8_t index): newly added index accessor; returns Item* or nullptr
+  if the index is out of range.
+- registerItem(uint32_t tagID, ItemType type): registers tag/type mapping.
+- addItem(uint32_t tagID): marks a registered item as being in the Backpack.
+- removeItem(uint32_t tagID): marks a registered item as Outside.
+- hasItem(ItemType type): checks whether the requested type is present.
+- getItemType(uint32_t tagID): returns ItemType; use findItem() when needing to
+  distinguish an unregistered tag from a registered unknown item.
+
+Backpack / state machine:
+- Backpack owns a private TaskManager.
+- Backpack::registerTask(const Task& task) forwards registration to its private
+  TaskManager; callers should not access TaskManager directly.
+- Known states: IDLE, CHECKING_INVENTORY, ACQUIRING_ITEMS, TASK_REMINDER.
+- begin() initialises the core.
+- getState() exposes current state.
+- startTask(...) starts a registered task and checks inventory.
+- stopTask() stops the active task.
+- itemAdded(...) and itemRemoved(...) report resolved item entry/removal.
+- itemScanned(tagID) exists as an integration hook; inspect its exact current
+  behaviour and signature before using it.
+- One active task at a time.
+- Inventory is the single source of truth for item location and task checks.
+- Unknown tags may be registered as ItemType::Unknown and emit UnknownRFID;
+  verify exact edge-case behaviour in source.
+
+Events:
+- EventGenerator and event structures are in the shared core.
+- Previous notes specify MAX_EVENTS = 30.
+- Event names discussed previously include TaskStarted, TaskStopped,
+  TaskComplete, TaskReminder, ItemRequired, ItemAcquired, UnknownRFID,
+  InventoryFull, and Item_not_required. Verify exact spellings and enum names in
+  Events.h/EventGenerator.h before using them.
+- During feedback integration, carefully define who consumes the event queue.
+  One consumer should not remove an event before another output has responded.
+
+Tasks:
+- Tasks require ItemType values, not RFID tag IDs.
+- Multiple tasks can share required items.
+- Core remains the authority for active task and task-completion logic.
+- Only one active task at a time.
+
+Desktop DebugConsole:
+- Source is firmware/backpack-core/src/DebugConsole.cpp.
+- Uses desktop terminal I/O; do not include it in the Arduino library.
+- Inventory output uses getItemCount() and getItemAt(index).
+- User improved output to show readable item and location names.
+
+===============================================================================
+7. ARDUINO DEBUG CONSOLE FILES — PREPARED, NOT VERIFIED
+===============================================================================
+
+Files generated in the preceding conversation:
+    DebugConsoleArduino.h
+    DebugConsoleArduino.cpp
+
+They were provided as downloadable files. They should be placed alongside the
+Arduino sketch (or in another Arduino application-layer folder), not inside
+AssistiveBackpackCore/src, because they use Arduino Serial APIs.
+
+Intended features:
+- Serial.print()/Serial.println() rather than std::cout.
+- Line-oriented Serial Monitor commands.
+- Commands for help, simulated scan, add/remove, task start/stop, inventory,
+  status, events, and RFID/type registration.
+- Fixed-size character input buffer rather than dynamic String.
+- Incremental input processing from update() to avoid waiting for a complete
+  line through a blocking timeout.
+- Readable item and location output.
+
+These files are an initial draft and have NOT been compiled against the exact
+current core. Before using them:
+1. Check every method referenced against Backpack.h and its implementation.
+2. Verify the exact signatures and return types for itemScanned, itemAdded,
+   itemRemoved, startTask, stopTask, getState, isTaskActive, isTaskComplete,
+   hasEvent, and getEvent.
+3. Verify the event type and fields; the draft expects fields named type, item,
+   and task, but this must be checked.
+4. Verify ItemType and TaskType enum values in Item.h and Task.h.
+5. Decide how the console accesses the exact Inventory instance owned/used by
+   Backpack. Do not pass a separate, disconnected Inventory instance.
+6. Check that displaying/draining events does not prevent future feedback
+   consumers from receiving them.
+7. Compile in Arduino IDE, correct interface mismatches, upload to Uno, and
+   test commands one at a time.
+
+The BasicBackpack smoke-test sketch previously declared Backpack locally inside
+setup(). That is acceptable only for the initial compile-and-begin check,
+because loop() did not use it. Before using the console or other subsystems,
+make the Backpack object persistent for the whole sketch lifetime.
+
+===============================================================================
+8. BASIC ARDUINO COMPATIBILITY SKETCH
+===============================================================================
+
+The successful initial sketch was:
+
+    #include <Backpack.h>
+
+    void setup()
+    {
+        Serial.begin(9600);
+        Serial.println("Assistive Backpack - Core Library Test");
+        Backpack backpack;
+        backpack.begin();
+        Serial.println("Backpack core begin() called.");
+    }
+
+    void loop()
+    {
+        // Intentionally empty for the initial compatibility test.
+    }
+
+The sketch compiled for Arduino Uno after the compatibility changes. Its local
+Backpack object must become persistent before it is used from loop().
+
+===============================================================================
+9. NEXT DEVELOPMENT STEPS
+===============================================================================
+
+STEP 1 — Preserve the baseline
+- Run `cmake --build build`.
+- Run `.\build\backpack.exe` and check inventory output.
+- Commit the known-good shared core and desktop-console changes.
+- Record the successful Uno compile.
+
+STEP 2 — Validate DebugConsoleArduino
+- Put DebugConsoleArduino.h/.cpp alongside BasicBackpack.ino.
+- Reconcile every method and field against actual core headers.
+- Make the Backpack object persistent.
+- Ensure the console refers to the same Inventory instance used by the core.
+- Compile in Arduino IDE and upload to Uno.
+- Open Serial Monitor at the configured baud rate (initially 9600 unless
+  changed).
+- Test help, inventory, and status before mutation commands.
+
+STEP 3 — Audit teammate sketches
+- Obtain the complete RFID project, including any supporting .h/.cpp files,
+  library dependencies, and pin assignments.
+- Obtain the complete feedback project with supporting files and dependencies.
+- Do not merge both sketches wholesale: each may have its own setup()/loop().
+- Identify duplicated task/inventory/event logic and preserve useful existing
+  work where possible.
+
+STEP 4 — Agree on interfaces
+- RFID adapter detects tag IDs and calls an agreed core API.
+- Decide how entry versus removal is resolved; a tag read alone does not
+  establish direction.
+- Feedback adapter translates core events into audio/LED/display actions.
+- Decide who consumes queued events and whether events must be dispatched to
+  multiple outputs.
+- Keep hardware APIs outside the shared core.
+
+STEP 5 — Integrate incrementally
+- Integrate and test RFID first.
+- Then integrate feedback.
+- Add buttons and other peripherals after the basic event path works.
+- Avoid changing the core and both adapters in the same debugging step.
+
+STEP 6 — End-to-end tests
+- Registered tag scan.
+- Unknown tag.
+- Item entry/removal with an explicit direction policy.
+- Start task with all required items present.
+- Start task with missing items and acquire them.
+- Task complete, task stop, reminder behaviour.
+- Inventory capacity and event-queue edge cases.
+- Repeat on Arduino Mega once the Uno integration baseline is stable.
+
+===============================================================================
+10. HANDOVER FOR THE NEXT DEVELOPER
+===============================================================================
+
+Start by opening the repository and checking the actual current source. This
+document is a save point, not a substitute for inspecting current headers and
+implementation.
+
+The project has a working hardware-independent core and desktop debug console.
+The core is packaged as an Arduino library and its basic sketch compiles on
+Arduino Uno. Inventory printing was removed from the core and moved to the
+desktop console; getItemAt(index) was added to support safe iteration. The
+desktop console now displays readable item types and locations. Affected
+headers use <stdint.h> for AVR compatibility.
+
+Arduino-specific debug-console files have been prepared but are not yet
+verified against the exact current source. Validate their API references and
+event handling before compiling or using them. Then audit the independently
+tested teammate RFID and feedback sketches, agree on interfaces, and integrate
+one subsystem at a time.
+
+Keep the single-source-of-truth principle: the core owns inventory and task
+state; RFID detects tags; feedback translates core events into outputs. Do not
+let adapters maintain separate copies of core state.
+
+End of save point.

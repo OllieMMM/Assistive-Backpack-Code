@@ -4,24 +4,109 @@
 // More information https://github.com/OllieMMM/Assistive-Backpack-Code
 // Written by Oliver McKinlay
 
+/*
+ * Arduino-specific serial debug console for the Assistive Backpack core.
+ *
+ * This class belongs in the Arduino application layer, NOT in the
+ * hardware-independent AssistiveBackpackCore library.
+ *
+ * Usage:
+ *   DebugConsoleArduino console(backpack, inventory);
+ *
+ *   void setup()
+ *   {
+ *       console.begin(9600);
+ *   }
+ *
+ *   void loop()
+ *   {
+ *       console.update();
+ *   }
+ *
+ * Commands are entered as one line in Serial Monitor:
+ *   help
+ *   scan 0x1001
+ *   add 0x1001
+ *   remove 0x1001
+ *   start 1
+ *   stop
+ *   inventory
+ *   status
+ *   events
+ *   register 0x1007 1
+ *
+ * Numeric ItemType and TaskType values depend on the enums in your core.
+ * Check Item.h and Task.h before using the register/start commands.
+ */
+
 #include <Backpack.h>
+#include <DebugConsoleArduino.h>
 
 void setup()
 {
     Serial.begin(9600);
-
     Serial.println("Assistive Backpack - Core Library Test");
 
     // One inventory shared by the backpack and task manager.
     Inventory inventory;
     Backpack backpack(inventory);
 
+    // Intialize and run the backpack
     backpack.begin();
+    Serial.println("Backpack core begin() called.");
+    
+    // Register demo RFID tags.
+    // These are example hexadecimal IDs.
+    inventory.registerItem(0x1001, ItemType::Wallet);
+    inventory.registerItem(0x1002, ItemType::Keys);
+    inventory.registerItem(0x1003, ItemType::Phone);
+    inventory.registerItem(0x1004, ItemType::Laptop);
+    inventory.registerItem(0x1005, ItemType::Charger);
+    inventory.registerItem(0x1006, ItemType::WaterBottle);
 
-    Serial.println("Backpack succesfully started");
+    // University task: laptop, phone and keys.
+    Task university{};
+    university.type = TaskType::University;
+    university.requiredItems[0] = ItemType::Laptop;
+    university.requiredItems[1] = ItemType::Phone;
+    university.requiredItems[2] = ItemType::Keys;
+    university.itemCount = 3;
+    university.reminderAudio = 1;
+
+    // Gym task: keys, phone and water bottle.
+    Task gym{};
+    gym.type = TaskType::Gym;
+    gym.requiredItems[0] = ItemType::Keys;
+    gym.requiredItems[1] = ItemType::Phone;
+    gym.requiredItems[2] = ItemType::WaterBottle;
+    gym.itemCount = 3;
+    gym.reminderAudio = 2;
+
+    // Work task: laptop, phone and charger.
+    Task work{};
+    work.type = TaskType::Work;
+    work.requiredItems[0] = ItemType::Laptop;
+    work.requiredItems[1] = ItemType::Phone;
+    work.requiredItems[2] = ItemType::Charger;
+    work.itemCount = 3;
+    work.reminderAudio = 3;
+
+    // Register tasks through Backpack's public interface.
+    backpack.registerTask(university);
+    backpack.registerTask(gym);
+    backpack.registerTask(work);
+
+    Serial.println("Demo environment initialized successfully.");
+    Serial.println("Registered tags: 0x1001 to 0x1006");
+    Serial.println("Registered tasks: University, Gym, Work");
+
+    // Begin the debug console, which will handle user input and output.
+    DebugConsoleArduino console(backpack, inventory);
+    console.begin(9600);
 }
+
 
 void loop()
 {
-    // Intentionally empty for this initial compatibility test.
+    console.update()
 }
