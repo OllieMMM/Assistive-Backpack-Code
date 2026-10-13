@@ -17,7 +17,9 @@ DebugConsoleArduino::DebugConsoleArduino(Backpack& backpackRef,
 }
 
 void DebugConsoleArduino::begin(unsigned long baudRate)
-{
+{   
+    delay(100); // Allow time for the USB serial connection to establish.
+
     Serial.begin(baudRate);
 
     // Avoid waiting forever for a USB serial connection: some Arduino boards
@@ -260,13 +262,19 @@ void DebugConsoleArduino::printStatus()
     // Numeric state output deliberately avoids assuming the exact enum
     // enumerator names. The value corresponds to the core's state enum.
     Serial.print(F("State value: "));
-    Serial.println(static_cast<int>(backpack.getState()));
+    Serial.println(stateName(backpack.getState()));
 
     Serial.print(F("Task active: "));
     Serial.println(backpack.isTaskActive() ? F("Yes") : F("No"));
 
     Serial.print(F("Task complete: "));
     Serial.println(backpack.isTaskComplete() ? F("Yes") : F("No"));
+
+    Serial.print(F("Current task: "));
+    Serial.println(taskName(backpack.getCurrentTask()));
+
+    Serial.print(F("Next required item: "));
+    Serial.println(itemName(backpack.getNextRequiredItem()));
 
     Serial.println(F("==========================="));
 }
@@ -283,13 +291,13 @@ void DebugConsoleArduino::printEvents()
         const BackpackEvent event = backpack.getEvent();
 
         Serial.print(F("Event type value: "));
-        Serial.println(static_cast<int>(event.type));
+        Serial.println(eventName(event.type));
 
         Serial.print(F("Item: "));
         Serial.println(itemName(event.item));
 
         Serial.print(F("Task type value: "));
-        Serial.println(static_cast<int>(event.task));
+        Serial.println(taskName(event.task));
 
         Serial.println();
         ++printed;
@@ -333,6 +341,54 @@ const char* DebugConsoleArduino::locationName(Location location)
     }
 
     return "Invalid location";
+}
+
+const char* DebugConsoleArduino::eventName(EventType type)
+{
+    switch (type)
+    {
+    case EventType::Unknown:            return "Unknown";
+    case EventType::TaskStarted:        return "TaskStarted";
+    case EventType::TaskStopped:        return "TaskStopped";
+    case EventType::TaskComplete:       return "TaskComplete";
+    case EventType::ItemRequired:       return "ItemRequired";
+    case EventType::ItemAcquired:       return "ItemAcquired";
+    case EventType::ItemAlreadyPresent: return "ItemAlreadyPresent";
+    case EventType::ItemNotRequired:    return "ItemNotRequired";
+    case EventType::UnknownRFID:        return "UnknownRFID";
+    case EventType::ItemAdded:          return "ItemAdded";
+    case EventType::ItemRemoved:        return "ItemRemoved";
+    case EventType::TaskReminder:       return "TaskReminder";
+    case EventType::InventoryFull:      return "InventoryFull";
+    }
+
+    return "Invalid event type";
+}
+
+const char* DebugConsoleArduino::stateName(BackpackState state)
+{
+    switch (state)
+    {
+    case BackpackState::IDLE:                return "Idle";
+    case BackpackState::ACQUIRING_ITEMS:     return "Acquiring Items";
+    case BackpackState::CHECKING_INVENTORY:  return "Checking Inventory";
+    case BackpackState::TASK_REMINDER:       return "Task Reminder";
+    }
+
+    return "Invalid state";
+}
+
+const char* DebugConsoleArduino::taskName(TaskType type)
+{
+    switch (type)
+    {
+    case TaskType::None:         return "None";
+    case TaskType::University:   return "University";
+    case TaskType::Gym:          return "Gym";
+    case TaskType::Work:         return "Work";
+    }
+
+    return "Invalid task type";
 }
 
 bool DebugConsoleArduino::parseUnsignedLong(const char* text,

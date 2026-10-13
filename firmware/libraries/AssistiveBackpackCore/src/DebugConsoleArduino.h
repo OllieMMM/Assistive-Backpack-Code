@@ -68,5 +68,8 @@ private:
 
     static const char* itemName(ItemType type);
     static const char* locationName(Location location);
+    static const char* eventName(EventType type);
+    static const char* stateName(BackpackState state);
+    static const char* taskName(TaskType type);
     static bool parseUnsignedLong(const char* text, unsigned long& value);
 };

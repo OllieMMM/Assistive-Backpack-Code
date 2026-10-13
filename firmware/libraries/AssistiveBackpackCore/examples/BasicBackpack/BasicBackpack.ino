@@ -5,24 +5,6 @@
 // Written by Oliver McKinlay
 
 /*
- * Arduino-specific serial debug console for the Assistive Backpack core.
- *
- * This class belongs in the Arduino application layer, NOT in the
- * hardware-independent AssistiveBackpackCore library.
- *
- * Usage:
- *   DebugConsoleArduino console(backpack, inventory);
- *
- *   void setup()
- *   {
- *       console.begin(9600);
- *   }
- *
- *   void loop()
- *   {
- *       console.update();
- *   }
- *
  * Commands are entered as one line in Serial Monitor:
  *   help
  *   scan 0x1001
@@ -42,14 +24,15 @@
 #include <Backpack.h>
 #include <DebugConsoleArduino.h>
 
+// One inventory shared by the backpack and task manager.
+Inventory inventory;
+Backpack backpack(inventory);
+DebugConsoleArduino console(backpack, inventory);
+
 void setup()
 {
-    Serial.begin(9600);
+    Serial.begin(115200);
     Serial.println("Assistive Backpack - Core Library Test");
-
-    // One inventory shared by the backpack and task manager.
-    Inventory inventory;
-    Backpack backpack(inventory);
 
     // Intialize and run the backpack
     backpack.begin();
@@ -101,12 +84,11 @@ void setup()
     Serial.println("Registered tasks: University, Gym, Work");
 
     // Begin the debug console, which will handle user input and output.
-    DebugConsoleArduino console(backpack, inventory);
-    console.begin(9600);
+    console.begin(115200);
 }
 
 
 void loop()
 {
-    console.update()
+    console.update();
 }
