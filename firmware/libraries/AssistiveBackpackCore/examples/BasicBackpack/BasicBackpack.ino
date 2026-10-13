@@ -22,12 +22,11 @@
  */
 
 #include <Backpack.h>
-#include <DebugConsoleArduino.h>
+#include <Arduino.h>
 
-// One inventory shared by the backpack and task manager.
+// Initialize one inventory shared by the backpack and task manager.
 Inventory inventory;
 Backpack backpack(inventory);
-DebugConsoleArduino console(backpack, inventory);
 
 void setup()
 {
@@ -36,16 +35,16 @@ void setup()
 
     // Intialize and run the backpack
     backpack.begin();
-    Serial.println("Backpack core begin() called.");
-    
-    // Register demo RFID tags.
-    // These are example hexadecimal IDs.
-    inventory.registerItem(0x1001, ItemType::Wallet);
-    inventory.registerItem(0x1002, ItemType::Keys);
-    inventory.registerItem(0x1003, ItemType::Phone);
-    inventory.registerItem(0x1004, ItemType::Laptop);
-    inventory.registerItem(0x1005, ItemType::Charger);
-    inventory.registerItem(0x1006, ItemType::WaterBottle);
+
+    // ========================================================================
+    // Task registration, Register 5 preset tasks with maximum of 10 items each.
+    // Follow the convention below:
+    // Task taskName{};
+    // taskName.type = TaskType::TaskTypeName;
+    // taskName.requiredItems[i] = ItemType::ItemTypeName;
+    // taskName.itemCount = number of items in the task;
+    // taskName.reminderAudio = audio file number for the reminder;
+    // ========================================================================
 
     // University task: laptop, phone and keys.
     Task university{};
@@ -78,17 +77,10 @@ void setup()
     backpack.registerTask(university);
     backpack.registerTask(gym);
     backpack.registerTask(work);
-
-    Serial.println("Demo environment initialized successfully.");
-    Serial.println("Registered tags: 0x1001 to 0x1006");
-    Serial.println("Registered tasks: University, Gym, Work");
-
-    // Begin the debug console, which will handle user input and output.
-    console.begin(115200);
 }
 
 
 void loop()
 {
-    console.update();
+    
 }

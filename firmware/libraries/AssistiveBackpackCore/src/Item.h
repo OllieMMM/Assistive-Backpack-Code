@@ -12,13 +12,20 @@
 // Enum creates a new data type. Can now write, ItemType item = ItemType::Phone.
 enum class ItemType
 {
-    Unknown,    // = 0
-    Wallet,     // = 1
-    Laptop,     // = 2
-    Phone,      // = 3
-    Keys,       // = 4
-    Charger,    // = 5
-    WaterBottle // = 6
+    Unknown,     // = 0
+    Wallet,      // = 1
+    Laptop,      // = 2
+    Phone,       // = 3
+    Keys,        // = 4
+    Charger,     // = 5
+    WaterBottle, // = 6
+    Medication,  // = 7
+    Glasses,     // = 8
+    Umbrella,    // = 9
+    Book,        // = 10
+    Headphones,  // = 11
+    Diary,       // = 12
+    // Add more item types as needed.    
 };
 
 enum class Location

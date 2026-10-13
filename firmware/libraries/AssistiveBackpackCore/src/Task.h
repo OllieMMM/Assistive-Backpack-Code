@@ -11,10 +11,15 @@
 
 enum class TaskType
 {
-    None,       // = 0
-    University, // = 1
-    Gym,        // = 2
-    Work        // = 3
+    None,        // = 0
+    University,  // = 1
+    Gym,         // = 2
+    Work,        // = 3
+    Doctors,     // = 4
+    Park,        // = 5 
+    FriendHouse, // = 6 
+    // Add more task types as needed.
+
 };
 
 struct Task

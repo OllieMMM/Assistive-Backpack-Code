@@ -17,14 +17,15 @@ enum class EventType
     TaskStopped,
     TaskComplete,
     ItemRequired,
-    ItemAcquired, // Specific to the task
+    ItemAcquired,
     ItemAlreadyPresent,
     ItemNotRequired,
     UnknownRFID,
-    ItemAdded, // Added to backpack 
+    ItemAdded,
     ItemRemoved,
     TaskReminder,
-    InventoryFull
+    InventoryFull,
+    // Add more event types as needed.
 };
 
 struct BackpackEvent
