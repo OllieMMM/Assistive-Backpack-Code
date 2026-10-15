@@ -40,12 +40,12 @@ void setup()
     
     // Register demo RFID tags.
     // These are example hexadecimal IDs.
-    inventory.registerItem(0x1001, ItemType::Wallet);
-    inventory.registerItem(0x1002, ItemType::Keys);
-    inventory.registerItem(0x1003, ItemType::Phone);
-    inventory.registerItem(0x1004, ItemType::Laptop);
-    inventory.registerItem(0x1005, ItemType::Charger);
-    inventory.registerItem(0x1006, ItemType::WaterBottle);
+    inventory.registerItem(RFIDTagID{{00, 00, 00, 01}, 4}, ItemType::Wallet) &&
+    inventory.registerItem(RFIDTagID{{00, 00, 00, 02}, 4}, ItemType::Keys) &&
+    inventory.registerItem(RFIDTagID{{00, 00, 00, 03}, 4}, ItemType::Phone) &&
+    inventory.registerItem(RFIDTagID{{00, 00, 00, 04}, 4}, ItemType::Laptop) &&
+    inventory.registerItem(RFIDTagID{{00, 00, 00, 05}, 4}, ItemType::Charger) &&
+    inventory.registerItem(RFIDTagID{{00, 00, 00, 06}, 4}, ItemType::WaterBottle);
 
     // University task: laptop, phone and keys.
     Task university{};
