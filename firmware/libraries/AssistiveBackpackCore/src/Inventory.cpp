@@ -22,18 +22,20 @@ uint8_t Inventory::getItemCount() const
 
 // Searches for an item in the registered inventory by its tagID.
 // If found, returns a pointer to the item; otherwise, returns nullptr.
-Item* Inventory::findItem(uint32_t tagID)
+
+Item* Inventory::findItem(const RFIDTagID& tagID)
 {
     for (uint8_t i = 0; i < itemCount; i++)
     {
-        if (items[i].tagID == tagID)
+        if (sameTagID(items[i].tagID, tagID))
         {
-            return &items[i]; //Return an address to the item if found.
+            return &items[i]; // Return an address to the item if found.
         }
     }
 
     return nullptr;
 }
+
 // +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 // Retrieves an item from the inventory by its index.
@@ -51,7 +53,8 @@ Item* Inventory::getItemAt(uint8_t index)
 
 // Registers a new item in the inventory with the given tagID and type.
 // Returns true if the item was successfully registered, false otherwise.
-bool Inventory::registerItem(uint32_t tagID, ItemType type)
+
+bool Inventory::registerItem(const RFIDTagID& tagID, ItemType type)
 {
     // Do not register the same tag twice.
     if (findItem(tagID) != nullptr)
@@ -73,13 +76,16 @@ bool Inventory::registerItem(uint32_t tagID, ItemType type)
 
     return true;
 }
+
 // +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 // Add item to the BackPack specific inventory.
 // Updates an item to be in the specified location (Backpack) based on its tagID.
 // Returns true if the item was successfully added, false otherwise.
-bool Inventory::addItem(uint32_t tagID)
+
+bool Inventory::addItem(const RFIDTagID& tagID)
 {
+    // Find the registered item using its RFID UID.
     Item* item = findItem(tagID);
 
     if (item == nullptr)
@@ -87,16 +93,18 @@ bool Inventory::addItem(uint32_t tagID)
         return false;
     }
 
+    // Update the item's location to indicate it is in the backpack.
     item->location = Location::Backpack;
 
     return true;
 }
+
 // +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 // Remove item from the BackPack specific inventory.
 // Updates an item to be in the specified location (Outside) based on its tagID.
 // Returns true if the item was successfully removed, false otherwise.
-bool Inventory::removeItem(uint32_t tagID)
+bool Inventory::removeItem(const RFIDTagID& tagID)
 {
     Item* item = findItem(tagID);
 
@@ -130,11 +138,11 @@ bool Inventory::hasItem(ItemType type) const
 }
 // +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-ItemType Inventory::getItemType(uint32_t tagID) const
+ItemType Inventory::getItemType(const RFIDTagID& tagID) const
 {
     for (uint8_t i = 0; i < itemCount; i++)
     {
-        if (items[i].tagID == tagID)
+        if (sameTagID(items[i].tagID, tagID))
         {
             return items[i].type;
         }

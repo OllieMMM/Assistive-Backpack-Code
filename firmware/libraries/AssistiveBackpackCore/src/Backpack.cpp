@@ -143,7 +143,7 @@ void Backpack::checkInventory()
 // This function should be called when an item is scanned into the backpack.
 // Takes in the tagID (e.g. RFID Tag = 0x1234) 
 
-void Backpack::itemAdded(uint32_t tagID)
+void Backpack::itemAdded(const RFIDTagID& tagID)
 {
     // Check whether this tag is already registered.
     Item* item = inventory.findItem(tagID);
@@ -239,7 +239,7 @@ void Backpack::itemAdded(uint32_t tagID)
 
 // Remove item from the backpack (sets this item location flag = outside)
 
-void Backpack::itemRemoved(uint32_t tagID)
+void Backpack::itemRemoved(const RFIDTagID& tagID)
 {
     // Find the tag before attempting to remove it.
     Item* item = inventory.findItem(tagID);
@@ -300,7 +300,7 @@ void Backpack::itemRemoved(uint32_t tagID)
 
 // Picks up that an item was scanned but not necessarily placed into/out of the 
 // backpack. Currently does nothing.
-void Backpack::itemScanned(uint32_t tagID)
+void Backpack::itemScanned(const RFIDTagID& tagID)
 {
     // RFID/input subsystem integration point.
     // A scan does not automatically mean the item was added.

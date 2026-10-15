@@ -18,13 +18,13 @@ int main()
 
     // Register demo RFID tags.
     // These are hexadecimal IDs, matching the console input convention.
-    const bool mappingsRegistered =
-        inventory.registerItem(0x1001, ItemType::Wallet) &&
-        inventory.registerItem(0x1002, ItemType::Keys) &&
-        inventory.registerItem(0x1003, ItemType::Phone) &&
-        inventory.registerItem(0x1004, ItemType::Laptop) &&
-        inventory.registerItem(0x1005, ItemType::Charger) &&
-        inventory.registerItem(0x1006, ItemType::WaterBottle);
+    const bool mappingsRegistered = 
+    inventory.registerItem(RFIDTagID{{00, 00, 00, 01}, 6}, ItemType::Wallet) &&
+    inventory.registerItem(RFIDTagID{{00, 00, 00, 02}, 6}, ItemType::Keys) &&
+    inventory.registerItem(RFIDTagID{{00, 00, 00, 03}, 6}, ItemType::Phone) &&
+    inventory.registerItem(RFIDTagID{{00, 00, 00, 04}, 6}, ItemType::Laptop) &&
+    inventory.registerItem(RFIDTagID{{00, 00, 00, 05}, 6}, ItemType::Charger) &&
+    inventory.registerItem(RFIDTagID{{00, 00, 00, 06}, 6}, ItemType::WaterBottle);
 
     if (!mappingsRegistered)
     {

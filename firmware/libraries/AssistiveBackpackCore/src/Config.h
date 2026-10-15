@@ -9,3 +9,4 @@ constexpr uint8_t MAX_TASK_ITEMS = 10; // Defines the maximum number of task ite
 constexpr uint8_t MAX_ITEMS = 20; // Defines the maximum number of items that can be stored in backpack inventory manager.
 constexpr uint8_t MAX_TASKS = 5; // Defines the maximum number of tasks that can be stored in the Backpack.
 constexpr uint8_t MAX_EVENTS = 30; // Define the maximum number of Events that can be held in the event queue
+constexpr uint8_t MAX_RFID_UID_BYTES = 10; // Defines the maximum number of bytes for an RFID tag's unique identifier (UID).

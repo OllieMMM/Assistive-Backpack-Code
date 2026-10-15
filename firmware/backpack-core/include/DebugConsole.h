@@ -25,7 +25,7 @@ private:
     void printStatus() const;
     void printEvents();
 
-    bool readTagID(uint32_t& tagID);
+    bool readTagID(RFIDTagID& tagID);
     bool readItemType(ItemType& type);
     bool readTaskType(TaskType& type);
 };

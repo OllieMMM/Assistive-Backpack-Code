@@ -21,17 +21,17 @@ public:
 
     Item* getItemAt(uint8_t index);
     
-    Item* findItem(uint32_t tagID);
+    Item* findItem(const RFIDTagID& tagID);
     
-    bool registerItem(uint32_t tagID, ItemType type);
+    bool registerItem(const RFIDTagID& tagID, ItemType type);
 
-    bool addItem(uint32_t tagID);
+    bool addItem(const RFIDTagID& tagID);
 
-    bool removeItem(uint32_t tagID);
+    bool removeItem(const RFIDTagID& tagID);
 
     bool hasItem(ItemType type) const; //The const keyword indicates that this function does not modify the state of the object.
 
-    ItemType getItemType(uint32_t tagID) const;
+    ItemType getItemType(const RFIDTagID& tagID) const;
 
 private:
     // Accessable only from within the class, internal data and methods.

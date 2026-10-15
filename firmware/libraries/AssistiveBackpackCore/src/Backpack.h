@@ -37,9 +37,9 @@ public:
     bool startTask(TaskType type);
     void stopTask();
 
-    void itemScanned(uint32_t tagID); 
-    void itemAdded(uint32_t tagID);
-    void itemRemoved(uint32_t tagID);
+    void itemScanned(const RFIDTagID& tagID);
+    void itemAdded(const RFIDTagID& tagID);
+    void itemRemoved(const RFIDTagID& tagID);
 
     TaskType getCurrentTask() const;
     ItemType getNextRequiredItem() const;

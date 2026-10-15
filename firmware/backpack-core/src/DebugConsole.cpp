@@ -106,9 +106,9 @@ namespace
         return true;
     }
 
-    bool parseHexTag(std::string text, uint32_t& tagID)
+    bool parseHexTag(std::string text, RFIDTagID& tagID)
     {
-        if (text.empty() || text[0] == '-')
+        if (text.empty())
         {
             return false;
         }
@@ -125,20 +125,63 @@ namespace
             return false;
         }
 
-        // Parse explicitly as base 16, not decimal.
-        std::istringstream input(text);
-        unsigned long long value = 0;
-
-        input >> std::hex >> value;
-
-        if (input.fail() || !input.eof() ||
-            value > std::numeric_limits<uint32_t>::max())
+        if ((text.length() % 2) != 0)
         {
             return false;
         }
 
-        tagID = static_cast<uint32_t>(value);
+        uint8_t byteCount =
+            static_cast<uint8_t>(text.length() / 2);
+
+        if (byteCount == 0 ||
+            byteCount > MAX_RFID_UID_BYTES)
+        {
+            return false;
+        }
+
+        RFIDTagID result = {};
+
+        result.length = byteCount;
+
+        for (uint8_t i = 0; i < byteCount; ++i)
+        {
+            std::string byteText =
+                text.substr(i * 2, 2);
+
+            unsigned int value = 0;
+
+            std::istringstream input(byteText);
+
+            input >> std::hex >> value;
+
+            if (input.fail())
+            {
+                return false;
+            }
+
+            result.bytes[i] =
+                static_cast<uint8_t>(value);
+        }
+
+        tagID = result;
         return true;
+    }
+
+    std::string tagIDToString(const RFIDTagID& tagID)
+    {
+        std::ostringstream output;
+
+        output << std::hex
+               << std::uppercase
+               << std::setfill('0');
+
+        for (uint8_t i = 0; i < tagID.length; ++i)
+        {
+            output << std::setw(2)
+                   << static_cast<int>(tagID.bytes[i]);
+        }
+
+        return output.str();
     }
 }
 // +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -171,12 +214,13 @@ void DebugConsole::printMenu() const
 // +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 // Helper function to read an RFID tag from the terminal / user input
-bool DebugConsole::readTagID(uint32_t& tagID)
+bool DebugConsole::readTagID(RFIDTagID& tagID)
 {
     std::string input;
 
-    std::cout << "Enter RFID tag ID in hexadecimal "
-              << "(for example, 1234 or 0x1234): ";
+    std::cout 
+            << "Enter RFID UID in hexadecimal "
+            << "(example: 04A21BC7 or 04A21BC7105592): ";
 
     if (!std::getline(std::cin, input))
     {
@@ -185,7 +229,11 @@ bool DebugConsole::readTagID(uint32_t& tagID)
 
     if (!parseHexTag(input, tagID))
     {
-        std::cout << "Invalid tag ID. Enter 1-8 hexadecimal digits.\n";
+        std::cout
+            << "Invalid UID. Enter an even number of "
+            << "hexadecimal digits representing up to "
+            << MAX_RFID_UID_BYTES
+            << " bytes.\n";
         return false;
     }
 
@@ -347,7 +395,7 @@ void DebugConsole::run()
             continue;
         }
 
-        uint32_t tagID = 0;
+        RFIDTagID tagID = {};
 
         switch (choice)
         {
@@ -421,9 +469,10 @@ void DebugConsole::run()
                     continue;
                 }
             
-                std::cout << "Tag: 0x"
-                          << std::hex << item->tagID
-                          << std::dec << std::endl;
+                std::cout 
+                    << "Tag: "
+                    << tagIDToString(item->tagID)
+                    << std::endl;
             
                 std::cout << "Item index: "
                           << static_cast<int>(i)
@@ -464,15 +513,18 @@ void DebugConsole::run()
             {
                 if (inventory.registerItem(tagID, type))
                 {
-                    std::cout << "RFID mapping registered: 0x"
-                              << std::hex << std::uppercase << tagID
-                              << std::dec << " -> " << itemName(type)
-                              << '\n';
+                    std::cout 
+                        << "RFID mapping registered: "
+                        << tagIDToString(tagID)
+                        << " -> "
+                        << itemName(type)
+                        << '\n';
                 }
                 else
                 {
-                    std::cout << "Registration failed. The tag may already "
-                                 "exist or inventory capacity may be full.\n";
+                    std::cout 
+                        << "Registration failed. The tag may already "
+                            "exist or inventory capacity may be full.\n";
                 }
             }
             break;
