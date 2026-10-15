@@ -79,55 +79,71 @@ void DebugConsoleArduino::processCommand(char* line)
     {
         printHelp();
     }
+    
     else if (strcmp(command, "scan") == 0)
     {
         char* tagText = strtok(nullptr, " \t");
-        unsigned long tagValue = 0;
 
-        if (tagText == nullptr || !parseUnsignedLong(tagText, tagValue))
+        RFIDTagID tagID = {};
+
+        if (tagText == nullptr || !parseTagID(tagText, tagID))
         {
-            Serial.println(F("Usage: scan <tagID>, e.g. scan 0x1001"));
+            Serial.println(
+                F("Usage: scan <UID>, e.g. scan 4A123C4D"));
+            Serial.println(
+                F("UID must contain 8, 14, or 20 hexadecimal characters."));
             return;
         }
 
-        Serial.print(F("Simulating RFID scan: 0x"));
-        Serial.println(tagValue, HEX);
-        backpack.itemScanned(static_cast<uint32_t>(tagValue));
+        Serial.print(F("Simulating RFID scan: "));
+        printTagID(tagID);
+        Serial.println();
+
+        backpack.itemScanned(tagID);
+
         Serial.println(F("Scan passed to Backpack core."));
     }
+
+    
     else if (strcmp(command, "add") == 0)
     {
         char* tagText = strtok(nullptr, " \t");
-        unsigned long tagValue = 0;
 
-        if (tagText == nullptr || !parseUnsignedLong(tagText, tagValue))
+        RFIDTagID tagID = {};
+
+        if (tagText == nullptr || !parseTagID(tagText, tagID))
         {
-            Serial.println(F("Usage: add <tagID>, e.g. add 0x1001"));
+            Serial.println(
+                F("Usage: add <UID>, e.g. add 4A123C4D"));
             return;
         }
 
-        // itemAdded() owns the core-side inventory/FSM update. We do not
-        // assume a return type here; the inventory/status commands can be
-        // used to inspect the result.
-        backpack.itemAdded(static_cast<uint32_t>(tagValue));
-        Serial.println(F("Add command sent to Backpack core. Use 'inventory' or 'status' to verify."));
+        backpack.itemAdded(tagID);
+
+        Serial.println(
+            F("Add command sent to Backpack core. Use 'inventory' or 'status' to verify."));
     }
+
+    
     else if (strcmp(command, "remove") == 0)
     {
         char* tagText = strtok(nullptr, " \t");
-        unsigned long tagValue = 0;
 
-        if (tagText == nullptr || !parseUnsignedLong(tagText, tagValue))
+        RFIDTagID tagID = {};
+
+        if (tagText == nullptr || !parseTagID(tagText, tagID))
         {
-            Serial.println(F("Usage: remove <tagID>, e.g. remove 0x1001"));
+            Serial.println(
+                F("Usage: remove <UID>, e.g. remove 4A123C4D"));
             return;
         }
 
-        // As above, keep this compatible whether itemRemoved() returns a
-        // status value or simply performs the operation.
-        backpack.itemRemoved(static_cast<uint32_t>(tagValue));
-        Serial.println(F("Remove command sent to Backpack core. Use 'inventory' or 'status' to verify."));
+        backpack.itemRemoved(tagID);
+
+        Serial.println(
+            F("Remove command sent to Backpack core. Use 'inventory' or 'status' to verify."));
     }
+
     else if (strcmp(command, "start") == 0)
     {
         char* taskText = strtok(nullptr, " \t");
@@ -161,30 +177,39 @@ void DebugConsoleArduino::processCommand(char* line)
     {
         printEvents();
     }
+    
     else if (strcmp(command, "register") == 0)
     {
         char* tagText = strtok(nullptr, " \t");
         char* typeText = strtok(nullptr, " \t");
-        unsigned long tagValue = 0;
+
+        RFIDTagID tagID = {};
         unsigned long typeValue = 0;
 
-        if (tagText == nullptr || typeText == nullptr ||
-            !parseUnsignedLong(tagText, tagValue) ||
+        if (tagText == nullptr ||
+            typeText == nullptr ||
+            !parseTagID(tagText, tagID) ||
             !parseUnsignedLong(typeText, typeValue))
         {
-            Serial.println(F("Usage: register <tagID> <numeric ItemType value>"));
-            Serial.println(F("Example: register 0x1007 1"));
-            Serial.println(F("Check Item.h for ItemType enum values."));
+            Serial.println(
+                F("Usage: register <UID> <numeric ItemType value>"));
+            Serial.println(
+                F("Example: register 4A123C4D 1"));
+            Serial.println(
+                F("UID must contain 8, 14, or 20 hexadecimal characters."));
             return;
         }
 
         const bool success = inventory.registerItem(
-            static_cast<uint32_t>(tagValue),
+            tagID,
             static_cast<ItemType>(typeValue));
 
-        Serial.println(success ? F("RFID mapping registered.")
-                               : F("Registration failed; tag may already exist or inventory may be full."));
+        Serial.println(
+            success
+                ? F("RFID mapping registered.")
+                : F("Registration failed; tag may already exist or inventory may be full."));
     }
+
     else
     {
         Serial.print(F("Unknown command: "));
@@ -202,17 +227,18 @@ void DebugConsoleArduino::printHelp()
     Serial.println();
     Serial.println(F("----- Backpack Debug Commands -----"));
     Serial.println(F("help                       - Show this menu"));
-    Serial.println(F("scan <tagID>               - Simulate a tag scan only"));
-    Serial.println(F("add <tagID>                - Tell the core an item was added"));
-    Serial.println(F("remove <tagID>             - Tell the core an item was removed"));
+    Serial.println(F("scan <UID>                 - Simulate a tag scan only"));
+    Serial.println(F("add <UID>                  - Tell the core an item was added"));
+    Serial.println(F("remove <UID>               - Tell the core an item was removed"));
     Serial.println(F("start <taskTypeNumber>     - Start a registered task"));
     Serial.println(F("stop                       - Stop the active task"));
     Serial.println(F("inventory                  - Print registered inventory"));
     Serial.println(F("status                     - Print current core status"));
     Serial.println(F("events                     - Print and drain queued events"));
-    Serial.println(F("register <tagID> <type>    - Register an RFID/type mapping"));
+    Serial.println(F("register <UID> <type>      - Register an RFID/type mapping"));
     Serial.println();
-    Serial.println(F("Tag IDs may be decimal or hexadecimal (e.g. 4097 or 0x1001)."));
+    Serial.println(F("UIDs must be hexadecimal: 4, 7, or 10 bytes."));
+    Serial.println(F("Examples: 4A123C4D, 04A123C4D00102"));
     Serial.println(F("TaskType and ItemType numbers follow the enums in Task.h / Item.h."));
     Serial.println(F("-----------------------------------"));
     Serial.println();
@@ -234,8 +260,9 @@ void DebugConsoleArduino::printInventory()
             continue;
         }
 
-        Serial.print(F("Tag: 0x"));
-        Serial.println(static_cast<unsigned long>(item->tagID), HEX);
+        Serial.print(F("Tag: "));
+        printTagID(item->tagID);
+        Serial.println();
 
         Serial.print(F("Item index: "));
         Serial.println(static_cast<unsigned int>(i));
@@ -410,3 +437,106 @@ bool DebugConsoleArduino::parseUnsignedLong(const char* text,
     value = parsed;
     return true;
 }
+
+
+bool DebugConsoleArduino::parseTagID(
+    const char* text,
+    RFIDTagID& tagID)
+{
+    if (text == nullptr)
+    {
+        return false;
+    }
+
+    // Count the hexadecimal characters.
+    uint8_t charCount = 0;
+
+    while (text[charCount] != '\0')
+    {
+        // Each UID byte requires exactly two hexadecimal characters.
+        if (charCount >= MAX_RFID_UID_BYTES * 2)
+        {
+            return false;
+        }
+
+        ++charCount;
+    }
+
+    // RC522 UIDs are commonly 4, 7, or 10 bytes long.
+    if (charCount != 8 &&
+        charCount != 14 &&
+        charCount != 20)
+    {
+        return false;
+    }
+
+    tagID.length = charCount / 2;
+
+    for (uint8_t i = 0; i < tagID.length; ++i)
+    {
+        const char highChar = text[i * 2];
+        const char lowChar = text[i * 2 + 1];
+
+        uint8_t highNibble;
+        uint8_t lowNibble;
+
+        // Convert the first hexadecimal character.
+        if (highChar >= '0' && highChar <= '9')
+        {
+            highNibble = highChar - '0';
+        }
+        else if (highChar >= 'A' && highChar <= 'F')
+        {
+            highNibble = highChar - 'A' + 10;
+        }
+        else if (highChar >= 'a' && highChar <= 'f')
+        {
+            highNibble = highChar - 'a' + 10;
+        }
+        else
+        {
+            return false;
+        }
+
+        // Convert the second hexadecimal character.
+        if (lowChar >= '0' && lowChar <= '9')
+        {
+            lowNibble = lowChar - '0';
+        }
+        else if (lowChar >= 'A' && lowChar <= 'F')
+        {
+            lowNibble = lowChar - 'A' + 10;
+        }
+        else if (lowChar >= 'a' && lowChar <= 'f')
+        {
+            lowNibble = lowChar - 'a' + 10;
+        }
+        else
+        {
+            return false;
+        }
+
+        // Combine the two 4-bit values into one byte.
+        tagID.bytes[i] = (highNibble << 4) | lowNibble;
+    }
+
+    return true;
+}
+
+
+void DebugConsoleArduino::printTagID(
+    const RFIDTagID& tagID)
+{
+    for (uint8_t i = 0; i < tagID.length; ++i)
+    {
+        // Arduino's HEX output omits leading zeros,
+        // so print a zero explicitly when needed.
+        if (tagID.bytes[i] < 0x10)
+        {
+            Serial.print('0');
+        }
+
+        Serial.print(tagID.bytes[i], HEX);
+    }
+}
+

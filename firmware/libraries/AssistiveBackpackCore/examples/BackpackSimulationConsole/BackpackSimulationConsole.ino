@@ -80,7 +80,7 @@ void setup()
     backpack.registerTask(work);
 
     Serial.println("Demo environment initialized successfully.");
-    Serial.println("Registered tags: 0x1001 to 0x1006");
+    Serial.println("Registered tags: 00000001 to 00000006");
     Serial.println("Registered tasks: University, Gym, Work");
 
     // Begin the debug console, which will handle user input and output.
